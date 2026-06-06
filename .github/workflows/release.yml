@@ -27,7 +27,7 @@ jobs:
           npm run build
 
       - name: Set up QEMU (arm64 emulation)
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Build arm64 .deb (jpackage on arm64)
         run: |
