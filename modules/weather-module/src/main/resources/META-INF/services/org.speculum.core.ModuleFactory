@@ -1,0 +1,2 @@
+org.speculum.modules.weather.WeatherModuleFactory
+org.speculum.modules.weather.WeatherForecastModuleFactory

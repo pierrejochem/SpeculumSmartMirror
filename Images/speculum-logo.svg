@@ -1,0 +1,26 @@
+<svg width="680" height="420" viewBox="0 0 680 420" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Speculum logo</title>
+<desc>A mirror-symmetry mark over the wordmark Speculum, built from reflected geometric forms with a Kotlin-inspired angular cut.</desc>
+<defs>
+<linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#7B61FF"/>
+<stop offset="1" stop-color="#3DD4C8"/>
+</linearGradient>
+<clipPath id="diamondClip"><path d="M120 60 L180 130 L120 200 L60 130 Z"/></clipPath>
+</defs>
+
+<g clip-path="url(#diamondClip)">
+<rect x="60" y="60" width="120" height="140" fill="url(#glass)"/>
+<rect x="60" y="60" width="60" height="140" fill="#000" opacity="0.14"/>
+<path d="M70 90 L110 90 L150 165 L110 165 Z" fill="#fff" opacity="0.22"/>
+<path d="M78 110 L96 110 L120 155 L102 155 Z" fill="#fff" opacity="0.18"/>
+</g>
+<path d="M120 60 L180 130 L120 200 L60 130 Z" fill="none" stroke="#7B61FF" stroke-width="2" opacity="0.5"/>
+<line x1="120" y1="60" x2="120" y2="200" stroke="#fff" stroke-width="1.5" opacity="0.45"/>
+
+<text x="340" y="300" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="72" font-weight="400" letter-spacing="2" fill="#1a1a1a">Specul<tspan fill="#7B61FF">u</tspan>m</text>
+
+<text x="340" y="345" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="16" letter-spacing="8" fill="#666666">SMART MIRROR · KOTLIN</text>
+
+<line x1="200" y1="362" x2="480" y2="362" stroke="#dddddd" stroke-width="1"/>
+</svg>

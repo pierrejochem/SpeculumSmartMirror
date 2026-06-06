@@ -1,0 +1,20 @@
+<svg width="240" height="240" viewBox="0 0 240 240" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Speculum icon</title>
+<desc>A diamond looking-glass mark with a central reflection seam and violet-to-teal glass fill.</desc>
+<defs>
+<linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#7B61FF"/>
+<stop offset="1" stop-color="#3DD4C8"/>
+</linearGradient>
+<clipPath id="diamondClip"><path d="M120 30 L210 120 L120 210 L30 120 Z"/></clipPath>
+</defs>
+
+<g clip-path="url(#diamondClip)">
+<rect x="30" y="30" width="180" height="180" fill="url(#glass)"/>
+<rect x="30" y="30" width="90" height="180" fill="#000" opacity="0.14"/>
+<path d="M48 75 L108 75 L168 165 L108 165 Z" fill="#fff" opacity="0.22"/>
+<path d="M60 105 L87 105 L123 150 L96 150 Z" fill="#fff" opacity="0.18"/>
+</g>
+<path d="M120 30 L210 120 L120 210 L30 120 Z" fill="none" stroke="#7B61FF" stroke-width="3" opacity="0.5"/>
+<line x1="120" y1="30" x2="120" y2="210" stroke="#fff" stroke-width="2.5" opacity="0.45"/>
+</svg>

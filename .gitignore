@@ -1,0 +1,29 @@
+*.iml
+.gradle
+.kotlin/
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+*.xcodeproj
+build/
+# Deployed module JARs (build output)
+/plugins/
+
+# Generated package plugin bundle
+/composeApp/app-resources/
+
+# Web admin build artifacts
+/config-server/web/node_modules/
+/config-server/web/dist/
+
+# Runtime mirror config (managed by the web admin)
+/config.json
+
+# Admin password hash (salted PBKDF2; written next to the config file). Never
+# commit it — and ignore the atomic-write temp files too.
+/admin-auth.json
+*.tmp
