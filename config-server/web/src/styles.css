@@ -276,7 +276,7 @@ button.small { padding: 6px 11px; font-size: 12px; }
 /* ---- Login --------------------------------------------------------------- */
 
 .login {
-  width: 360px;
+  width: min(360px, 100%);
   display: grid;
   gap: 14px;
   padding: 30px 28px 28px;
@@ -341,3 +341,49 @@ button.small { padding: 6px 11px; font-size: 12px; }
 /* ---- Misc ---------------------------------------------------------------- */
 
 .error.center, .muted.center { font-size: 15px; }
+
+/* Long values (e.g. the QR target URL) must never force horizontal scroll. */
+code { overflow-wrap: anywhere; word-break: break-word; }
+input, select, textarea { max-width: 100%; min-width: 0; }
+
+/* ---- Responsive (phones / tablets) --------------------------------------- */
+
+/* The admin is opened from phones on the LAN (http://<pi-ip>:8080). Below this
+   width, fixed-width fields and flex rows are stacked so nothing overflows. */
+@media (max-width: 640px) {
+  .page { padding: 20px 12px 96px; }
+  .card { padding: 18px 16px 20px; border-radius: 12px; }
+
+  /* Fields stack full-width instead of sitting in a cramped flex row. */
+  .row { flex-direction: column; align-items: stretch; gap: 12px; }
+  .row > label { width: 100%; }
+
+  /* Module header: name on its own line, controls below. */
+  .modname { min-width: 0; }
+
+  /* Key/value pairs: key + value stay side by side but fully fluid; the
+     remove button keeps its size. */
+  .kv-row .k { width: auto; flex: 1 1 40%; }
+  .kv-row .v { flex: 2 1 55%; }
+
+  /* Compliments date rows stack (regex key over its textarea). */
+  .compl-date { flex-direction: column; }
+  .compl-date .k { width: 100%; }
+
+  .pw .row > label { min-width: 0; }
+
+  /* Sticky footer + header wrap rather than overflow. */
+  header { flex-wrap: wrap; gap: 10px; }
+  footer { flex-wrap: wrap; gap: 10px; padding: 12px; }
+  .card-head { flex-wrap: wrap; }
+
+  /* 16px text fields stop iOS Safari from auto-zooming on focus. */
+  input, select { font-size: 16px; }
+  textarea { font-size: 15px; }
+}
+
+/* Very narrow phones: drop the inline brand tag to save the title row. */
+@media (max-width: 380px) {
+  .brand .tag { display: none; }
+  .wordmark { font-size: 34px; }
+}
