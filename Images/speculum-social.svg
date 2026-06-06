@@ -53,7 +53,7 @@
 <text x="563" y="420" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
       font-size="29" fill="#c4cad3">Modular smart-mirror dashboard —</text>
 <text x="563" y="458" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
-      font-size="29" fill="#c4cad3">Compose for Desktop, MagicMirror² reimagined.</text>
+      font-size="29" fill="#c4cad3">Compose for Desktop.</text>
 
 <!-- footer strip -->
 <rect x="563" y="520" width="320" height="3" rx="1.5" fill="url(#glass)" opacity="0.7"/>
