@@ -106,25 +106,29 @@ See **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)**. In short: create a
 
 The plugin API is published to **GitHub Packages** (`org.speculum:mirror-api`)
 on every `v*` release tag, so out-of-tree modules can compile against it without
-the full source checkout. GitHub Packages requires authentication even for
-public packages:
+the full source checkout. The package is **public**, but GitHub's Maven registry
+still requires a token to download (a personal access token with the
+`read:packages` scope):
 
 ```kotlin
 repositories {
     maven {
-        url = uri("https://maven.pkg.github.com/OWNER/Speculum")
+        url = uri("https://maven.pkg.github.com/pierrejochem/Speculum")
         credentials {
             username = providers.gradleProperty("gpr.user").orNull ?: System.getenv("GITHUB_ACTOR")
             password = providers.gradleProperty("gpr.token").orNull ?: System.getenv("GITHUB_TOKEN")
         }
     }
 }
-dependencies { compileOnly("org.speculum:mirror-api:<version>") }
+dependencies { compileOnly("org.speculum:mirror-api:0.0.1") }
 ```
 
-`<version>` is the release tag without the `v` (e.g. tag `v1.0.0` → `1.0.0`).
-Publishing config lives in [`mirror-api/build.gradle.kts`](mirror-api/build.gradle.kts);
-the `publish-mirror-api` job in [`.github/workflows/release.yml`](.github/workflows/release.yml)
+Put `gpr.user` (your GitHub username) and `gpr.token` (the PAT) in
+`~/.gradle/gradle.properties`, or export `GITHUB_ACTOR` / `GITHUB_TOKEN`. The
+version is the release tag without the `v` (tag `v0.0.1` → `0.0.1`); latest
+published: **0.0.1**. Publishing config lives in
+[`mirror-api/build.gradle.kts`](mirror-api/build.gradle.kts); the
+`publish-mirror-api` job in [`.github/workflows/release.yml`](.github/workflows/release.yml)
 runs it on tag push.
 
 ## Requirements

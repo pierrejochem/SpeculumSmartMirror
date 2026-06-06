@@ -57,7 +57,7 @@ publishing {
             name = "GitHubPackages"
             url = uri(
                 "https://maven.pkg.github.com/" +
-                    (System.getenv("GITHUB_REPOSITORY") ?: "OWNER/Speculum")
+                    (System.getenv("GITHUB_REPOSITORY") ?: "pierrejochem/Speculum")
             )
             credentials {
                 username = System.getenv("GITHUB_ACTOR") ?: System.getenv("GPR_USER")
