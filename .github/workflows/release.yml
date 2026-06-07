@@ -112,7 +112,8 @@ jobs:
 
       - name: Locate artifact
         id: pkg
-        run: echo "path=$(ls packaging/arch/*.pkg.tar.zst | head -1)" >> "$GITHUB_OUTPUT"
+        # ALARM's makepkg defaults PKGEXT to .pkg.tar.xz (not .zst), so match any.
+        run: echo "path=$(ls packaging/arch/*.pkg.tar.* | head -1)" >> "$GITHUB_OUTPUT"
 
       - name: Upload to workflow artifacts
         uses: actions/upload-artifact@v7
