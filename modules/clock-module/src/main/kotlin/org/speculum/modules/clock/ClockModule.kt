@@ -175,7 +175,7 @@ class ClockModule(config: ModuleConfig) : MirrorModule(config) {
         val second = dt.second
         val date = "${dt.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }}, " +
             "${dt.month.name.lowercase().replaceFirstChar { it.uppercase() }} " +
-            "${dt.dayOfMonth}, ${dt.year}"
+            "${dt.day}, ${dt.year}"
         val week = isoWeek(dt.date)
     }
 

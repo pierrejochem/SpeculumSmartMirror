@@ -113,7 +113,7 @@ class CalendarModule(config: ModuleConfig) : MirrorModule(config) {
             days in 2..6 -> date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
             else -> {
                 val month = date.month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
-                "$month ${date.dayOfMonth}"
+                "$month ${date.day}"
             }
         }
         if (e.allDay) return day

@@ -54,7 +54,7 @@ class CalendarProvider {
                 line == "BEGIN:VEVENT" -> { inEvent = true; summary = null; start = null; allDay = false }
                 line == "END:VEVENT" -> {
                     if (inEvent && summary != null && start != null) {
-                        events += CalendarEvent(summary!!, start!!, allDay, symbol)
+                        events += CalendarEvent(summary, start, allDay, symbol)
                     }
                     inEvent = false
                 }

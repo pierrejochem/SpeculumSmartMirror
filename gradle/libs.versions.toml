@@ -1,12 +1,20 @@
 [versions]
 kotlin = "2.4.0"
 compose = "1.11.1"
+composeMaterial3 = "1.9.0" # material3 is versioned independently of the Compose BOM
 coroutines = "1.11.0"
 serialization = "1.11.0"
 ktor = "3.5.0"
 datetime = "0.8.0"
 
 [libraries]
+# Compose artifacts declared directly (the `compose.runtime`/`material3`/… DSL
+# accessors are deprecated in Compose 1.11). material3 has its own version.
+compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose" }
+compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }
+compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "composeMaterial3" }
+compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }

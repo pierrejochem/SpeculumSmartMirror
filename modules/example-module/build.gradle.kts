@@ -19,9 +19,9 @@ dependencies {
     // The host app provides these at runtime (shared via the parent classloader),
     // so they are compile-only and the JAR stays thin.
     compileOnly(project(":mirror-api"))
-    compileOnly(compose.runtime)
-    compileOnly(compose.foundation)
-    compileOnly(compose.material3)
+    compileOnly(libs.compose.runtime)
+    compileOnly(libs.compose.foundation)
+    compileOnly(libs.compose.material3)
     compileOnly(libs.kotlinx.coroutines.core)
 }
 

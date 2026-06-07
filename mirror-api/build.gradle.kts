@@ -27,8 +27,8 @@ java {
 }
 
 dependencies {
-    api(compose.runtime)
-    api(compose.ui)
+    api(libs.compose.runtime)
+    api(libs.compose.ui)
     api(libs.kotlinx.coroutines.core)
     api(libs.kotlinx.serialization.json)
     testImplementation(libs.junit.jupiter)

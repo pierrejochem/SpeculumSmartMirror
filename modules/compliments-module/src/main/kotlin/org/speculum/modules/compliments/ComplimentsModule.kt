@@ -26,6 +26,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.Json
 import org.speculum.config.ModuleConfig
@@ -93,7 +94,7 @@ class ComplimentsModule(config: ModuleConfig) : MirrorModule(config) {
     private fun complimentArray(): List<String> {
         val dt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val hour = dt.hour
-        val date = "${dt.year}-${pad(dt.monthNumber)}-${pad(dt.dayOfMonth)}"
+        val date = "${dt.year}-${pad(dt.month.number)}-${pad(dt.day)}"
 
         var list = when {
             hour in morningStart until morningEnd && pools.containsKey("morning") ->

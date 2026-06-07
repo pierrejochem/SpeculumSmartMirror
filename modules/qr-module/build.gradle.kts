@@ -18,10 +18,10 @@ java {
 dependencies {
     // Provided by the host app at runtime (shared via the parent classloader).
     compileOnly(project(":mirror-api"))
-    compileOnly(compose.runtime)
-    compileOnly(compose.foundation)
-    compileOnly(compose.material3)
-    compileOnly(compose.ui)
+    compileOnly(libs.compose.runtime)
+    compileOnly(libs.compose.foundation)
+    compileOnly(libs.compose.material3)
+    compileOnly(libs.compose.ui)
     compileOnly(libs.zxing.core)
 }
 
