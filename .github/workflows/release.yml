@@ -96,6 +96,9 @@ jobs:
               # systemd-detect-virt is flaky in containers; stub it so pacman
               # hooks never abort the install.
               ln -sf /usr/bin/true /usr/bin/systemd-detect-virt
+              # pacman 7 download sandbox (Landlock + the alpm user) cannot                                                                                                                                                                                                                      
+              # initialize inside an unprivileged container, so disable it.                                                                                                                                                                                                                      
+              sed -i "s/^\[options\]/[options]\nDisableSandbox/" /etc/pacman.conf
               pacman -Syu --noconfirm --needed base-devel sudo jdk17-openjdk nodejs npm git
               useradd -m builder
               printf "builder ALL=(ALL) NOPASSWD: ALL\n" > /etc/sudoers.d/builder
