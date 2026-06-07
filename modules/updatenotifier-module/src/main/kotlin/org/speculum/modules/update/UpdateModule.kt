@@ -25,14 +25,19 @@ import org.speculum.core.MirrorModule
  * installed version. Compares the running version (`currentVersion` config)
  * against the latest release tag.
  *
+ * The running version is detected automatically (the host sets the
+ * `speculum.version` system property from the build); `currentVersion` config
+ * only overrides it when set.
+ *
  * Config keys:
  *  - `repo`            GitHub "owner/name"  (default "pierrejochem/Speculum")
- *  - `currentVersion`  the installed version (default "1.0.0")
+ *  - `currentVersion`  override the auto-detected installed version (optional)
  */
 class UpdateModule(config: ModuleConfig) : MirrorModule(config) {
 
     private val repo = config.string("repo", "pierrejochem/Speculum")
-    private val current = config.string("currentVersion", "1.0.0").removePrefix("v")
+    private val current = detectVersion(config.string("currentVersion", ""))
+    private val dev = isDevVersion(current)
     private val provider = GitHubReleaseProvider(repo)
 
     // Don't hammer the GitHub API — at least 6h between checks.
@@ -43,6 +48,7 @@ class UpdateModule(config: ModuleConfig) : MirrorModule(config) {
     private var checked by mutableStateOf(false)
 
     override suspend fun refresh() {
+        if (dev) { checked = true; return } // no release comparison for dev builds
         val release = provider.latest()
         update = if (release != null && release.tagName.isNotBlank() &&
             isNewer(release.tagName, current)
@@ -58,6 +64,12 @@ class UpdateModule(config: ModuleConfig) : MirrorModule(config) {
     override fun Content() {
         val u = update
         when {
+            // Development build — show "dev", never nag about releases.
+            dev -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Speculum dev", color = Color.White, fontSize = 16.sp)
+                Text("Development build", color = DIM, fontSize = 14.sp)
+            }
+
             // Before the first check completes.
             !checked -> Text("Checking for updates…", color = DIM, fontSize = 14.sp)
 

@@ -36,6 +36,10 @@ dependencies {
     implementation(libs.zxing.core) // QR encoding (provided to the qr-module plugin at runtime)
 }
 
+// Single source of the app version: the package version, and (via a system
+// property) what the update-notifier module compares against the latest release.
+val appVersion = "1.0.0"
+
 // Module JARs are bundled into the package here; at runtime the app finds them
 // via `compose.application.resources.dir` (see PluginLoader).
 val packagedPluginsDir = layout.projectDirectory.dir("app-resources/common/plugins")
@@ -49,7 +53,7 @@ compose.desktop {
             // (jpackage cannot cross-compile) — see PACKAGING.md.
             targetFormats(TargetFormat.Deb)
             packageName = "speculum"
-            packageVersion = "1.0.0"
+            packageVersion = appVersion
             description = "Speculum — modular smart-mirror dashboard"
             vendor = "Speculum"
 
@@ -59,7 +63,12 @@ compose.desktop {
             // Low-memory tuning for small devices (e.g. Raspberry Pi, 1 GB RAM):
             // cap the heap and use the low-overhead serial GC. Live heap is ~45 MB,
             // so 160 MB is ample and keeps RSS well under the default ¼-of-RAM.
-            jvmArgs += listOf("-Xmx160m", "-XX:+UseSerialGC", "-XX:MaxMetaspaceSize=96m")
+            // `speculum.version` lets the update-notifier module read the running
+            // version without any config (the single source is `appVersion`).
+            jvmArgs += listOf(
+                "-Xmx160m", "-XX:+UseSerialGC", "-XX:MaxMetaspaceSize=96m",
+                "-Dspeculum.version=$appVersion",
+            )
 
             // Ship the module plugin JARs inside the package; exposed at runtime
             // under <resources.dir>/plugins.
@@ -79,6 +88,8 @@ compose.desktop {
 // and run from the project root so the app finds that `plugins/` folder.
 tasks.matching { it.name == "run" }.configureEach {
     dependsOn(":deployModules")
+    // The update-notifier detects dev runs by the absence of the jpackage
+    // resources dir, so no version property is needed here.
     (this as? JavaExec)?.workingDir = rootProject.projectDir
 }
 

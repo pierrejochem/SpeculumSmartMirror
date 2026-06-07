@@ -1,10 +1,8 @@
 package org.speculum.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -76,10 +74,18 @@ private fun RegionBand(
     end: List<MirrorModule>
 ) {
     if (start.isEmpty() && center.isEmpty() && end.isEmpty()) return
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Column(horizontalAlignment = Alignment.Start) { start.forEach { Slot(it) } }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) { center.forEach { Slot(it) } }
-        Column(horizontalAlignment = Alignment.End) { end.forEach { Slot(it) } }
+    // Box (not Row+SpaceBetween) so the center column is anchored to the true
+    // screen center regardless of the left/right modules' widths.
+    Box(Modifier.fillMaxWidth()) {
+        Column(Modifier.align(Alignment.TopStart), horizontalAlignment = Alignment.Start) {
+            start.forEach { Slot(it) }
+        }
+        Column(Modifier.align(Alignment.TopCenter), horizontalAlignment = Alignment.CenterHorizontally) {
+            center.forEach { Slot(it) }
+        }
+        Column(Modifier.align(Alignment.TopEnd), horizontalAlignment = Alignment.End) {
+            end.forEach { Slot(it) }
+        }
     }
 }
 

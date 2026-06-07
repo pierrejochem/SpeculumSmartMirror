@@ -126,6 +126,8 @@ function ModuleCard({
   // Special editors replace the raw key-value rows for these keys.
   const hidden = (k: string) =>
     (isCompliments && k === "compliments") || (isQr && (k === "ip" || k === "size"));
+  // Auto-detected, not user-editable (e.g. the running version).
+  const readonlyKey = (k: string) => k === "currentVersion";
   const entries = Object.entries(mod.config).filter(([k]) => !hidden(k));
 
   const setKey = (key: string, value: string) =>
@@ -160,15 +162,23 @@ function ModuleCard({
       </div>
 
       <div className="kv">
-        {entries.map(([k, v], idx) => (
-          <div className="kv-row" key={idx}>
-            <input className="k" placeholder="key" value={k}
-              onChange={(e) => setConfigKey(k, e.target.value, v)} />
-            <input className="v" placeholder="value" value={v}
-              onChange={(e) => setConfigKey(k, k, e.target.value)} />
-            <button className="ghost danger" onClick={() => removeKey(k)}>×</button>
-          </div>
-        ))}
+        {entries.map(([k, v], idx) =>
+          readonlyKey(k) ? (
+            <div className="kv-row" key={idx}>
+              <input className="k" value={k} readOnly disabled />
+              <input className="v" value={v} readOnly disabled title="Auto-detected from the running app" />
+              <span className="kv-lock small muted" title="Auto-detected — read-only">auto</span>
+            </div>
+          ) : (
+            <div className="kv-row" key={idx}>
+              <input className="k" placeholder="key" value={k}
+                onChange={(e) => setConfigKey(k, e.target.value, v)} />
+              <input className="v" placeholder="value" value={v}
+                onChange={(e) => setConfigKey(k, k, e.target.value)} />
+              <button className="ghost danger" onClick={() => removeKey(k)}>×</button>
+            </div>
+          )
+        )}
         <button className="ghost small" onClick={addKey}>+ option</button>
       </div>
 

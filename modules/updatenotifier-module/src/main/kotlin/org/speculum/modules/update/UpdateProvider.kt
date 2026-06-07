@@ -39,6 +39,36 @@ data class Release(
     @SerialName("html_url") val htmlUrl: String = "",
 )
 
+/** Marker shown (and stored) for a non-release / development build. */
+const val DEV_VERSION = "dev"
+
+/**
+ * The installed version. Precedence: explicit [override] (config) always wins;
+ * otherwise a development run reports [DEV_VERSION], and a packaged build uses
+ * the `speculum.version` system property the host injects (else its manifest
+ * Implementation-Version, else [DEV_VERSION]).
+ *
+ * Dev is detected by the absence of `jpackage.app-path`, the system property
+ * the jpackage native launcher sets only for the packaged/installed app — so
+ * running via `./gradlew run` always shows "dev" regardless of the injected
+ * version property.
+ */
+fun detectVersion(override: String = ""): String = override.ifBlank {
+    if (isDevRuntime()) DEV_VERSION
+    else System.getProperty("speculum.version")
+        ?: Release::class.java.`package`?.implementationVersion
+        ?: DEV_VERSION
+}.removePrefix("v")
+
+/** True when not running from the packaged app (jpackage launcher sets app-path). */
+private fun isDevRuntime(): Boolean =
+    System.getProperty("jpackage.app-path").isNullOrBlank()
+
+/** A development build has no comparable numeric version, so updates aren't checked. */
+fun isDevVersion(version: String): Boolean =
+    version.isBlank() || version.equals(DEV_VERSION, ignoreCase = true) ||
+        version.substringBefore('-').split('.').none { it.toIntOrNull() != null }
+
 /**
  * True if [latest] is a strictly higher version than [current]. Leading "v" is
  * ignored and versions are compared component-by-component as integers
