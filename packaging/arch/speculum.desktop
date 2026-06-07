@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Speculum
+Comment=Modular smart-mirror dashboard
+Exec=/opt/speculum/bin/speculum
+Icon=speculum
+Terminal=false
+Categories=Utility;

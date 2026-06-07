@@ -1,0 +1,56 @@
+# Maintainer: Pierre Jochem <pierrejochem@msn.com>
+#
+# Arch Linux (aarch64) package for Speculum. Compose Desktop has no native Arch
+# target, so this builds the self-contained app-image (`createDistributable`:
+# launcher + bundled JRE + module plugins + web admin, all relative-path) and
+# installs it under /opt, with a launcher symlink, .desktop entry and icon.
+#
+# Build ON an aarch64 Arch box (jpackage/Skiko cannot cross-compile):
+#   cd packaging/arch && makepkg -si
+
+pkgname=speculum
+pkgver=0.0.1
+pkgrel=1
+pkgdesc="Modular smart-mirror dashboard — Compose for Desktop, MagicMirror² reimagined"
+arch=('aarch64')
+url="https://github.com/pierrejochem/Speculum"
+license=('MIT')
+# Runtime X/render libs Skiko needs (the JRE itself is bundled in the app-image).
+depends=('fontconfig' 'freetype2' 'libx11' 'libxext' 'libxrender' 'libxtst' 'libxi')
+makedepends=('jdk17-openjdk' 'nodejs' 'npm' 'git')
+options=(!strip)  # never strip the bundled JRE / Skiko natives
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
+        "speculum.desktop")
+sha256sums=('SKIP'
+            'SKIP')
+
+_src="Speculum-$pkgver"
+
+build() {
+  cd "$srcdir/$_src"
+  export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+
+  # Web admin UI → config-server/web/dist (bundled into the app-image).
+  ( cd config-server/web && npm ci && npm run build )
+
+  # createDistributable also runs prepareAppResources, which bundles the module
+  # plugin JARs (:deployModules) and the web UI into the image.
+  ./gradlew --no-daemon -PreleaseVersion="$pkgver" :composeApp:createDistributable
+}
+
+package() {
+  cd "$srcdir/$_src"
+  local _app="composeApp/build/compose/binaries/main/app/speculum"
+
+  install -dm755 "$pkgdir/opt/speculum"
+  cp -a "$_app/." "$pkgdir/opt/speculum/"
+
+  install -dm755 "$pkgdir/usr/bin"
+  ln -s /opt/speculum/bin/speculum "$pkgdir/usr/bin/speculum"
+
+  install -Dm644 composeApp/icons/speculum.png \
+    "$pkgdir/usr/share/icons/hicolor/512x512/apps/speculum.png"
+  install -Dm644 "$srcdir/speculum.desktop" \
+    "$pkgdir/usr/share/applications/speculum.desktop"
+  install -Dm644 LICENSE.md "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
