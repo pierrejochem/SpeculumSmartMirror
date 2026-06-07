@@ -1,0 +1,33 @@
+# Speculum fullscreen kiosk service — for Raspberry Pi OS Lite / headless setups
+# without a desktop session. Uses `cage`, a minimal Wayland kiosk compositor, to
+# run the mirror fullscreen on the console.
+#
+# Install:
+#   sudo apt install cage          # (Debian/Ubuntu) or: sudo pacman -S cage
+#   # edit User= below to the account that owns the display, then:
+#   sudo cp speculum.service /etc/systemd/system/    # (deb/rpm ship it under
+#   #   /opt/speculum/lib/app/resources/; Arch installs it automatically)
+#   sudo systemctl enable --now speculum.service
+#
+# On Arch the unit is already at /usr/lib/systemd/system/speculum.service.
+
+[Unit]
+Description=Speculum smart-mirror (fullscreen kiosk)
+After=systemd-user-sessions.service network-online.target
+Wants=network-online.target
+
+[Service]
+# The account that owns seat0 / the display. Change to your user (e.g. "pi").
+User=pi
+# cage launches a minimal Wayland session and runs Speculum fullscreen in it.
+ExecStart=/usr/bin/cage -s -- /opt/speculum/bin/speculum
+Restart=on-failure
+RestartSec=3
+# Bind to the console so cage can take the seat.
+TTYPath=/dev/tty1
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

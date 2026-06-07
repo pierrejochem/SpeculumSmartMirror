@@ -11,8 +11,8 @@
 pkgname=speculum
 pkgver=0.0.1
 pkgrel=1
-pkgdesc="Modular smart-mirror dashboard — Compose for Desktop, MagicMirror² reimagined"
-arch=('aarch64')
+pkgdesc="Modular smart-mirror dashboard — Compose for Desktop app"
+arch=('aarch64' 'x86_64')
 url="https://github.com/pierrejochem/Speculum"
 license=('MIT')
 # Runtime X/render libs Skiko needs (the JRE itself is bundled in the app-image).
@@ -52,5 +52,8 @@ package() {
     "$pkgdir/usr/share/icons/hicolor/512x512/apps/speculum.png"
   install -Dm644 "$srcdir/speculum.desktop" \
     "$pkgdir/usr/share/applications/speculum.desktop"
+  # Kiosk autostart unit (enable with: systemctl enable --now speculum.service).
+  install -Dm644 packaging/systemd/speculum.service \
+    "$pkgdir/usr/lib/systemd/system/speculum.service"
   install -Dm644 LICENSE.md "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

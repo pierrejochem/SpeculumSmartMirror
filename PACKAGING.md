@@ -67,8 +67,30 @@ from any device on the network at `http://<pi-ip>:8080` (default password
 
 ## Run on boot (kiosk)
 
-The mirror is meant to run fullscreen on the Pi's display. With the desktop (X11)
-session, autostart it:
+Two options depending on whether you run a desktop session or Pi OS Lite.
+
+### A. systemd service (Pi OS Lite / headless — recommended)
+
+A ready unit ships with every package. It uses [`cage`](https://github.com/cage-kiosk/cage),
+a minimal Wayland kiosk compositor, to run the mirror fullscreen on the console
+with no desktop environment.
+
+```bash
+sudo apt install -y cage          # or: sudo pacman -S cage
+
+# Arch already installs the unit at /usr/lib/systemd/system/speculum.service.
+# deb/rpm ship it under the app resources — copy it into place:
+sudo cp /opt/speculum/lib/app/resources/speculum.service /etc/systemd/system/
+
+sudoedit /etc/systemd/system/speculum.service   # set User= to your account (e.g. pi)
+sudo systemctl daemon-reload
+sudo systemctl enable --now speculum.service     # starts now + on every boot
+journalctl -u speculum -f                         # follow logs
+```
+
+### B. Desktop (X11) autostart
+
+With the full desktop session, autostart it instead:
 
 ```bash
 mkdir -p ~/.config/autostart
@@ -105,7 +127,8 @@ Two options on the installed Pi:
 In `composeApp/build.gradle.kts` → `nativeDistributions`:
 
 - `packageVersion` — bump for each release.
-- `targetFormats(TargetFormat.Deb)` — add `TargetFormat.Rpm` or `AppImage` if needed.
+- `targetFormats(TargetFormat.Deb, TargetFormat.Rpm)` — builds `.deb` + `.rpm`
+  (run `./gradlew packageDeb packageRpm`; `.rpm` needs `rpmbuild` installed).
 - `linux { … }` — package name, menu group, icon. The icon is set from
   `iconFile.set(layout.projectDirectory.file("icons/speculum.png"))`
   (`composeApp/icons/speculum.png`, generated from `Images/speculum-icon.svg`).
@@ -118,21 +141,47 @@ In `composeApp/build.gradle.kts` → `nativeDistributions`:
 [`.github/workflows/release.yml`](.github/workflows/release.yml) runs on every
 `v*` tag push, in parallel:
 
-- **`deb-arm64`** — builds the arm64 `.deb` and attaches it to the GitHub Release.
-- **`arch-aarch64`** — builds the Arch `.pkg.tar.zst` (via the PKGBUILD) and
-  attaches it to the Release.
+- **`linux-deb-rpm`** (matrix: `arm64`, `amd64`) — builds the `.deb` **and**
+  `.rpm` for each arch and attaches them to the GitHub Release.
+- **`arch`** (matrix: `aarch64`, `x86_64`) — builds the Arch `.pkg.tar.*` (via
+  the PKGBUILD) for each arch and attaches it.
 - **`publish-mirror-api`** — publishes `org.speculum:mirror-api:<tag-without-v>`
   to **GitHub Packages** (`maven.pkg.github.com`) using the workflow's
   `GITHUB_TOKEN` (`packages: write`). See the README's *Using `mirror-api` as a
   dependency* section for consumer setup.
+- **`checksums`** — after the package jobs, writes a `SHA256SUMS` over every
+  package and attaches it (plus detached GPG signatures — see below).
 
-The `.deb` and Arch jobs run on **native arm64 runners** (`ubuntu-24.04-arm`,
-free for public repos) — no QEMU emulation, so they're fast and avoid the
-emulator's `systemd-detect-virt` crash.
+Every package arch builds on its **own native runner** — `ubuntu-24.04-arm` for
+arm64/aarch64, `ubuntu-latest` for amd64/x86_64 (both free for public repos).
+jpackage can't cross-compile, and native runners avoid QEMU (whose emulated
+`systemd-detect-virt` crashes pacman).
 
-So `git tag v1.2.3 && git push --tags` produces the installable `.deb`, the Arch
-package, and the published API artifact. Bump `appVersion` in
-`composeApp/build.gradle.kts` to match the tag for the `.deb` filename.
+So `git tag v1.2.3 && git push --tags` produces, for both arm64 and x86-64: a
+`.deb`, an `.rpm`, and an Arch package — plus the published API artifact. Bump
+`appVersion` in `composeApp/build.gradle.kts` to match the tag for the package
+filenames.
+
+## Verifying downloads
+
+Each release ships a `SHA256SUMS` file. Verify an asset:
+
+```bash
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+If repository secrets `GPG_PRIVATE_KEY` (ASCII-armored private key) and
+`GPG_PASSPHRASE` are set, the `checksums` job also attaches a detached
+`.asc` signature for every asset and for `SHA256SUMS`. Verify with your public
+key imported:
+
+```bash
+gpg --verify SHA256SUMS.asc SHA256SUMS
+gpg --verify speculum_1.2.3-1_arm64.deb.asc speculum_1.2.3-1_arm64.deb
+```
+
+Without those secrets the build still succeeds — it just skips signing and ships
+checksums only.
 
 ## Arch Linux ARM (aarch64)
 

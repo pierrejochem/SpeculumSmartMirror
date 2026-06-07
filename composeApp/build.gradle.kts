@@ -49,9 +49,11 @@ compose.desktop {
         mainClass = "org.speculum.MainKt"
 
         nativeDistributions {
-            // Deb for Raspberry Pi OS / Debian. Build ON the target arch
-            // (jpackage cannot cross-compile) — see PACKAGING.md.
-            targetFormats(TargetFormat.Deb)
+            // Deb (Raspberry Pi OS / Debian) + Rpm (Fedora / RHEL / openSUSE).
+            // Build ON the target arch — jpackage cannot cross-compile. See
+            // PACKAGING.md. (packageDeb needs fakeroot/dpkg; packageRpm needs
+            // rpmbuild.)
+            targetFormats(TargetFormat.Deb, TargetFormat.Rpm)
             packageName = "speculum"
             packageVersion = appVersion
             description = "Speculum — modular smart-mirror dashboard"
@@ -108,8 +110,16 @@ val bundleWeb by tasks.registering(Copy::class) {
     into(layout.projectDirectory.dir("app-resources/common/web"))
 }
 
+// Ship the kiosk systemd unit inside the .deb/.rpm (jpackage can't place files
+// in /usr/lib/systemd, so it lands under the app resources dir for the user to
+// copy — see PACKAGING.md). The Arch package installs it to the proper path.
+val bundleSystemd by tasks.registering(Copy::class) {
+    from(rootProject.layout.projectDirectory.file("packaging/systemd/speculum.service"))
+    into(layout.projectDirectory.dir("app-resources/common"))
+}
+
 tasks.matching { it.name == "prepareAppResources" }
-    .configureEach { dependsOn(bundlePlugins, bundleWeb) }
+    .configureEach { dependsOn(bundlePlugins, bundleWeb, bundleSystemd) }
 
 compose.resources {
     publicResClass = true

@@ -8,9 +8,16 @@ permissions:
   contents: write
 
 jobs:
-  deb-arm64:
-    # Native arm64 runner (free for public repos) — no QEMU emulation needed.
-    runs-on: ubuntu-24.04-arm
+  # Native .deb + .rpm for both arches. jpackage can't cross-compile, so each
+  # arch builds on its own native runner (free for public repos — no QEMU).
+  linux-deb-rpm:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+          - { arch: amd64, runner: ubuntu-latest }
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v6
 
@@ -27,30 +34,80 @@ jobs:
           npm ci
           npm run build
 
-      - name: Build arm64 .deb (jpackage on arm64)
+      # eclipse-temurin is Debian-based: apt provides dpkg/fakeroot (deb) and the
+      # `rpm` package provides rpmbuild (rpm), so one container builds both.
+      - name: Build .deb + .rpm (${{ matrix.arch }})
         run: |
-          docker run --rm \
-            -v "$PWD":/src -w /src eclipse-temurin:17-jdk bash -c "
-              apt-get update -qq &&
-              apt-get install -y -qq fakeroot binutils dpkg >/dev/null &&
-              ./gradlew packageDeb --no-daemon --stacktrace
-            "
-
-      - name: Locate artifact
-        id: deb
-        run: echo "path=$(ls composeApp/build/compose/binaries/main/deb/*.deb | head -1)" >> "$GITHUB_OUTPUT"
+          docker run --rm -v "$PWD":/src -w /src eclipse-temurin:17-jdk bash -c "
+            apt-get update -qq &&
+            apt-get install -y -qq fakeroot binutils dpkg rpm >/dev/null &&
+            ./gradlew packageDeb packageRpm --no-daemon --stacktrace
+          "
 
       - name: Upload to workflow artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: magicmirror-deb-arm64
-          path: ${{ steps.deb.outputs.path }}
+          name: speculum-linux-${{ matrix.arch }}
+          path: |
+            composeApp/build/compose/binaries/main/deb/*.deb
+            composeApp/build/compose/binaries/main/rpm/*.rpm
 
       - name: Attach to GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          files: ${{ steps.deb.outputs.path }}
+          files: |
+            composeApp/build/compose/binaries/main/deb/*.deb
+            composeApp/build/compose/binaries/main/rpm/*.rpm
           generate_release_notes: true
+
+  # Arch package for both arches (the PKGBUILD installs the app-image).
+  arch:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: aarch64, runner: ubuntu-24.04-arm, image: "menci/archlinuxarm:base-devel" }
+          - { arch: x86_64, runner: ubuntu-latest, image: "archlinux:base-devel" }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+
+      # makepkg must run as a non-root user. pkgver is pinned to the triggering
+      # tag so the PKGBUILD's source tarball matches.
+      - name: Build Arch package (${{ matrix.arch }})
+        run: |
+          docker run --rm -v "$PWD":/src -w /src \
+            -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
+            ${{ matrix.image }} bash -c '
+              set -e
+              # systemd-detect-virt is flaky in containers; stub it so pacman
+              # hooks never abort the install.
+              ln -sf /usr/bin/true /usr/bin/systemd-detect-virt
+              # pacman 7 download sandbox (Landlock + the alpm user) cannot
+              # initialize inside an unprivileged container, so disable it.
+              sed -i "s/^\[options\]/[options]\nDisableSandbox/" /etc/pacman.conf
+              pacman -Syu --noconfirm --needed base-devel sudo jdk17-openjdk nodejs npm git
+              useradd -m builder
+              printf "builder ALL=(ALL) NOPASSWD: ALL\n" > /etc/sudoers.d/builder
+              chown -R builder /src
+              sed -i "s/^pkgver=.*/pkgver=${GITHUB_REF_NAME#v}/" packaging/arch/PKGBUILD
+              cd packaging/arch
+              # -s installs the PKGBUILD depends/makedepends via pacman (builder
+              # has passwordless sudo), so runtime libs resolve during the build.
+              sudo -u builder makepkg -s -f --noconfirm
+            '
+
+      - name: Upload to workflow artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: speculum-arch-${{ matrix.arch }}
+          # makepkg's PKGEXT differs by distro (.zst vs .xz), so match any.
+          path: packaging/arch/*.pkg.tar.*
+
+      - name: Attach to GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: packaging/arch/*.pkg.tar.*
 
   publish-mirror-api:
     runs-on: ubuntu-latest
@@ -77,51 +134,42 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
 
-  arch-aarch64:
-    # Native arm64 runner (free for public repos) — no QEMU, which segfaults on
-    # pacman's systemd-detect-virt hook under emulation.
-    runs-on: ubuntu-24.04-arm
+  # SHA256SUMS over every package, plus detached GPG signatures when a signing
+  # key is configured. Runs after the package jobs so all artifacts exist.
+  checksums:
+    needs: [linux-deb-rpm, arch]
+    runs-on: ubuntu-latest
+    env:
+      GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+      GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
     steps:
-      - uses: actions/checkout@v6
-
-      # Compose has no Arch target, so the PKGBUILD installs the app-image
-      # (createDistributable). makepkg must run as a non-root user. pkgver is
-      # pinned to the triggering tag so the PKGBUILD's source tarball matches.
-      - name: Build Arch package (aarch64)
-        run: |
-          docker run --rm -v "$PWD":/src -w /src \
-            -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
-            menci/archlinuxarm:base-devel bash -c '
-              set -e
-              # systemd-detect-virt is flaky in containers; stub it so pacman
-              # hooks never abort the install.
-              ln -sf /usr/bin/true /usr/bin/systemd-detect-virt
-              # pacman 7 download sandbox (Landlock + the alpm user) cannot                                                                                                                                                                                                                      
-              # initialize inside an unprivileged container, so disable it.                                                                                                                                                                                                                      
-              sed -i "s/^\[options\]/[options]\nDisableSandbox/" /etc/pacman.conf
-              pacman -Syu --noconfirm --needed base-devel sudo jdk17-openjdk nodejs npm git
-              useradd -m builder
-              printf "builder ALL=(ALL) NOPASSWD: ALL\n" > /etc/sudoers.d/builder
-              chown -R builder /src
-              sed -i "s/^pkgver=.*/pkgver=${GITHUB_REF_NAME#v}/" packaging/arch/PKGBUILD
-              cd packaging/arch
-              # -s installs the PKGBUILD depends/makedepends via pacman (builder
-              # has passwordless sudo), so runtime libs resolve during the build.
-              sudo -u builder makepkg -s -f --noconfirm
-            '
-
-      - name: Locate artifact
-        id: pkg
-        # ALARM's makepkg defaults PKGEXT to .pkg.tar.xz (not .zst), so match any.
-        run: echo "path=$(ls packaging/arch/*.pkg.tar.* | head -1)" >> "$GITHUB_OUTPUT"
-
-      - name: Upload to workflow artifacts
-        uses: actions/upload-artifact@v7
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v7
         with:
-          name: speculum-arch-aarch64
-          path: ${{ steps.pkg.outputs.path }}
+          path: dist
 
-      - name: Attach to GitHub Release
+      - name: Collect packages + checksums
+        run: |
+          mkdir -p out
+          find dist -type f \( -name '*.deb' -o -name '*.rpm' -o -name '*.pkg.tar.*' \) \
+            -exec cp -n {} out/ \;
+          cd out
+          sha256sum * > SHA256SUMS
+          echo "----- SHA256SUMS -----"; cat SHA256SUMS
+
+      - name: GPG-sign artifacts (only if a key is configured)
+        if: env.GPG_PRIVATE_KEY != ''
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          cd out
+          sign() { gpg --batch --yes --pinentry-mode loopback \
+            --passphrase "$GPG_PASSPHRASE" --detach-sign --armor "$1"; }
+          for f in *; do [ "$f" = SHA256SUMS ] || sign "$f"; done
+          sign SHA256SUMS
+
+      - name: Attach checksums + signatures to the Release
         uses: softprops/action-gh-release@v3
         with:
-          files: ${{ steps.pkg.outputs.path }}
+          files: |
+            out/SHA256SUMS
+            out/*.asc
