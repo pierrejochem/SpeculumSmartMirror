@@ -16,5 +16,6 @@ tasks.register("deployModules") {
         ":modules:compliments-module:deployToModules",
         ":modules:newsfeed-module:deployToModules",
         ":modules:qr-module:deployToModules",
+        ":modules:updatenotifier-module:deployToModules",
     )
 }

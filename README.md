@@ -31,6 +31,7 @@ Each is its own Gradle subproject under `modules/`, built to a JAR in `plugins/`
 - **calendar** — upcoming events from ICS feeds (`modules/calendar-module`)
 - **compliments** — time-of-day greetings, date specials (`modules/compliments-module`)
 - **newsfeed** — rotating RSS/Atom headlines (`modules/newsfeed-module`)
+- **updatenotifier** — top-center banner when a newer GitHub release exists (`modules/updatenotifier-module`)
 - **example** — fully-commented reference module (`modules/example-module`)
 
 ## Project layout
