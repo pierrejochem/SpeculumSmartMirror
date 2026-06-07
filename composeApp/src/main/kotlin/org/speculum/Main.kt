@@ -17,6 +17,19 @@ import org.speculum.resources.speculum_icon
  * then opens the mirror window. Set MIRROR_ADMIN_DISABLED=1 to skip the server.
  */
 fun main() {
+    // Skiko defaults to OpenGL on Linux, which renders a black screen on many
+    // Linux GPU/driver/Wayland combos (notably KDE). The mirror UI is mostly
+    // static, so software rendering is a reliable default here. Respect an
+    // explicit override via the `skiko.renderApi` property or `SKIKO_RENDER_API`
+    // env var (e.g. set OPENGL to force GPU rendering).
+    val osIsLinux = System.getProperty("os.name").orEmpty().startsWith("Linux", ignoreCase = true)
+    if (osIsLinux &&
+        System.getProperty("skiko.renderApi") == null &&
+        System.getenv("SKIKO_RENDER_API") == null
+    ) {
+        System.setProperty("skiko.renderApi", "SOFTWARE")
+    }
+
     if (System.getenv("MIRROR_ADMIN_DISABLED") == null) {
         runCatching { startServer(wait = false) }
             .onFailure { System.err.println("[admin] config server failed to start: $it") }
