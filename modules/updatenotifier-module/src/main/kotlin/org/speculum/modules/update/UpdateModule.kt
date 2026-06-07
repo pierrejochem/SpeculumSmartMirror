@@ -19,10 +19,11 @@ import org.speculum.config.ModuleConfig
 import org.speculum.core.MirrorModule
 
 /**
- * Shows a discreet banner when a newer Speculum release exists on GitHub.
- * Compares the running version (`currentVersion` config) against the repo's
- * latest release tag. When up to date it renders nothing, so it stays invisible
- * on the mirror until there's actually something to act on.
+ * Shows the update status of the running mirror against the repo's latest
+ * GitHub release. When a newer release exists it shows an "Update available"
+ * banner with the new version; otherwise a discreet up-to-date hint with the
+ * installed version. Compares the running version (`currentVersion` config)
+ * against the latest release tag.
  *
  * Config keys:
  *  - `repo`            GitHub "owner/name"  (default "pierrejochem/Speculum")
@@ -31,7 +32,7 @@ import org.speculum.core.MirrorModule
 class UpdateModule(config: ModuleConfig) : MirrorModule(config) {
 
     private val repo = config.string("repo", "pierrejochem/Speculum")
-    private val current = config.string("currentVersion", "1.0.0")
+    private val current = config.string("currentVersion", "1.0.0").removePrefix("v")
     private val provider = GitHubReleaseProvider(repo)
 
     // Don't hammer the GitHub API — at least 6h between checks.
@@ -39,6 +40,7 @@ class UpdateModule(config: ModuleConfig) : MirrorModule(config) {
         config.refreshIntervalMs.coerceAtLeast(6 * 60 * 60_000L)
 
     private var update by mutableStateOf<UpdateInfo?>(null)
+    private var checked by mutableStateOf(false)
 
     override suspend fun refresh() {
         val release = provider.latest()
@@ -49,27 +51,40 @@ class UpdateModule(config: ModuleConfig) : MirrorModule(config) {
         } else {
             null
         }
+        checked = true
     }
 
     @Composable
     override fun Content() {
-        val u = update ?: return // up to date → render nothing
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("⬆︎", color = ACCENT, fontSize = 18.sp) // ⬆ (text glyph)
-                Spacer(Modifier.width(8.dp))
+        val u = update
+        when {
+            // Before the first check completes.
+            !checked -> Text("Checking for updates…", color = DIM, fontSize = 14.sp)
+
+            // A newer release is available.
+            u != null -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("⬆︎", color = ACCENT, fontSize = 18.sp) // ⬆ (text glyph)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Update available",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
                 Text(
-                    "Update available",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
+                    "v${u.version}  ·  installed v$current",
+                    color = DIM,
+                    fontSize = 14.sp,
                 )
             }
-            Text(
-                "v${u.version}  ·  installed v${current.removePrefix("v")}",
-                color = DIM,
-                fontSize = 14.sp,
-            )
+
+            // Up to date — show the current version as a quiet hint.
+            else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Speculum v$current", color = Color.White, fontSize = 16.sp)
+                Text("No update available", color = DIM, fontSize = 14.sp)
+            }
         }
     }
 
