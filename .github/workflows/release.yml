@@ -9,7 +9,8 @@ permissions:
 
 jobs:
   deb-arm64:
-    runs-on: ubuntu-latest
+    # Native arm64 runner (free for public repos) — no QEMU emulation needed.
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v6
 
@@ -26,12 +27,9 @@ jobs:
           npm ci
           npm run build
 
-      - name: Set up QEMU (arm64 emulation)
-        uses: docker/setup-qemu-action@v4
-
       - name: Build arm64 .deb (jpackage on arm64)
         run: |
-          docker run --rm --platform linux/arm64 \
+          docker run --rm \
             -v "$PWD":/src -w /src eclipse-temurin:17-jdk bash -c "
               apt-get update -qq &&
               apt-get install -y -qq fakeroot binutils dpkg >/dev/null &&
@@ -80,29 +78,33 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
 
   arch-aarch64:
-    runs-on: ubuntu-latest
+    # Native arm64 runner (free for public repos) — no QEMU, which segfaults on
+    # pacman's systemd-detect-virt hook under emulation.
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v6
-
-      - name: Set up QEMU (arm64 emulation)
-        uses: docker/setup-qemu-action@v4
 
       # Compose has no Arch target, so the PKGBUILD installs the app-image
       # (createDistributable). makepkg must run as a non-root user. pkgver is
       # pinned to the triggering tag so the PKGBUILD's source tarball matches.
       - name: Build Arch package (aarch64)
         run: |
-          docker run --rm --platform linux/arm64 -v "$PWD":/src -w /src \
+          docker run --rm -v "$PWD":/src -w /src \
             -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
             menci/archlinuxarm:base-devel bash -c '
               set -e
+              # systemd-detect-virt is flaky in containers; stub it so pacman
+              # hooks never abort the install.
+              ln -sf /usr/bin/true /usr/bin/systemd-detect-virt
               pacman -Syu --noconfirm --needed base-devel sudo jdk17-openjdk nodejs npm git
               useradd -m builder
               printf "builder ALL=(ALL) NOPASSWD: ALL\n" > /etc/sudoers.d/builder
               chown -R builder /src
               sed -i "s/^pkgver=.*/pkgver=${GITHUB_REF_NAME#v}/" packaging/arch/PKGBUILD
               cd packaging/arch
-              sudo -u builder makepkg -f --noconfirm
+              # -s installs the PKGBUILD depends/makedepends via pacman (builder
+              # has passwordless sudo), so runtime libs resolve during the build.
+              sudo -u builder makepkg -s -f --noconfirm
             '
 
       - name: Locate artifact

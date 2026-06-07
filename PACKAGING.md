@@ -116,18 +116,23 @@ In `composeApp/build.gradle.kts` → `nativeDistributions`:
 ## Releases (CI)
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) runs on every
-`v*` tag push and does two things in parallel:
+`v*` tag push, in parallel:
 
-- **`deb-arm64`** — builds the arm64 `.deb` (jpackage under QEMU emulation) and
-  attaches it to the GitHub Release.
+- **`deb-arm64`** — builds the arm64 `.deb` and attaches it to the GitHub Release.
+- **`arch-aarch64`** — builds the Arch `.pkg.tar.zst` (via the PKGBUILD) and
+  attaches it to the Release.
 - **`publish-mirror-api`** — publishes `org.speculum:mirror-api:<tag-without-v>`
   to **GitHub Packages** (`maven.pkg.github.com`) using the workflow's
   `GITHUB_TOKEN` (`packages: write`). See the README's *Using `mirror-api` as a
   dependency* section for consumer setup.
 
-So `git tag v1.2.3 && git push --tags` produces both the installable `.deb` and
-the published API artifact. Bump `packageVersion` in `composeApp/build.gradle.kts`
-to match the tag for the `.deb` filename.
+The `.deb` and Arch jobs run on **native arm64 runners** (`ubuntu-24.04-arm`,
+free for public repos) — no QEMU emulation, so they're fast and avoid the
+emulator's `systemd-detect-virt` crash.
+
+So `git tag v1.2.3 && git push --tags` produces the installable `.deb`, the Arch
+package, and the published API artifact. Bump `appVersion` in
+`composeApp/build.gradle.kts` to match the tag for the `.deb` filename.
 
 ## Arch Linux ARM (aarch64)
 
