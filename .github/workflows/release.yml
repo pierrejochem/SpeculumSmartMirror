@@ -78,3 +78,44 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
+
+  arch-aarch64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up QEMU (arm64 emulation)
+        uses: docker/setup-qemu-action@v4
+
+      # Compose has no Arch target, so the PKGBUILD installs the app-image
+      # (createDistributable). makepkg must run as a non-root user. pkgver is
+      # pinned to the triggering tag so the PKGBUILD's source tarball matches.
+      - name: Build Arch package (aarch64)
+        run: |
+          docker run --rm --platform linux/arm64 -v "$PWD":/src -w /src \
+            -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
+            menci/archlinuxarm:base-devel bash -c '
+              set -e
+              pacman -Syu --noconfirm --needed base-devel sudo jdk17-openjdk nodejs npm git
+              useradd -m builder
+              printf "builder ALL=(ALL) NOPASSWD: ALL\n" > /etc/sudoers.d/builder
+              chown -R builder /src
+              sed -i "s/^pkgver=.*/pkgver=${GITHUB_REF_NAME#v}/" packaging/arch/PKGBUILD
+              cd packaging/arch
+              sudo -u builder makepkg -f --noconfirm
+            '
+
+      - name: Locate artifact
+        id: pkg
+        run: echo "path=$(ls packaging/arch/*.pkg.tar.zst | head -1)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to workflow artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: speculum-arch-aarch64
+          path: ${{ steps.pkg.outputs.path }}
+
+      - name: Attach to GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: ${{ steps.pkg.outputs.path }}

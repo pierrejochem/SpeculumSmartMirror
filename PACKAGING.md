@@ -129,6 +129,28 @@ So `git tag v1.2.3 && git push --tags` produces both the installable `.deb` and
 the published API artifact. Bump `packageVersion` in `composeApp/build.gradle.kts`
 to match the tag for the `.deb` filename.
 
+## Arch Linux ARM (aarch64)
+
+A [`PKGBUILD`](packaging/arch/PKGBUILD) builds a pacman package. Compose Desktop
+has no native Arch target, so it installs the **app-image** (`createDistributable`:
+launcher + bundled JRE + module plugins + web admin) under `/opt/speculum`, with a
+`/usr/bin/speculum` symlink, a `.desktop` entry and the icon.
+
+Build **on an aarch64 Arch box** (jpackage/Skiko can't cross-compile):
+
+```bash
+cd packaging/arch
+makepkg -si          # builds + installs speculum-<ver>-1-aarch64.pkg.tar.zst
+```
+
+`makepkg` pulls the tagged source tarball, runs `npm run build` for the admin UI,
+then `:composeApp:createDistributable`. Needs `jdk17-openjdk nodejs npm git`
+(listed as `makedepends`); the runtime deps (`fontconfig`, X libs) are declared in
+the PKGBUILD. Bump `pkgver` to the release tag you're packaging.
+
+Run it the same way as the `.deb`: `speculum` (or the menu entry) starts the
+fullscreen mirror + admin on `:8080`; config lives at `~/.speculum/config.json`.
+
 ## Build on x86 with Docker (alternative to building on the Pi)
 
 ```bash
