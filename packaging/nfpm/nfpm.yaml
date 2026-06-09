@@ -1,0 +1,74 @@
+# nfpm config — builds the Speculum .deb AND .rpm from the Compose app-image.
+#
+# jpackage's installer can't add a /usr/bin symlink or run post-install logic
+# (it only drops files under /opt/<name>), so the executable wasn't on PATH and
+# the systemd unit had to be copied by hand. nfpm wraps the same app-image the
+# Arch PKGBUILD uses (`:composeApp:createDistributable`) and adds the symlink,
+# the systemd unit at the proper path, and maintainer scripts.
+#
+# Build (from the repo root, after createDistributable + the web build):
+#   PKG_VERSION=1.2.3 PKG_ARCH=arm64 \
+#     nfpm pkg --config packaging/nfpm/nfpm.yaml --packager deb --target dist/
+#   PKG_VERSION=1.2.3 PKG_ARCH=arm64 \
+#     nfpm pkg --config packaging/nfpm/nfpm.yaml --packager rpm --target dist/
+#
+# PKG_ARCH is the Debian arch (arm64 / amd64); nfpm maps it to the rpm arch
+# (aarch64 / x86_64) automatically. Paths are relative to the repo root.
+
+name: speculum
+arch: ${PKG_ARCH}
+version: ${PKG_VERSION}
+maintainer: Pierre Jochem <pierrejochem@msn.com>
+description: Speculum — modular smart-mirror dashboard
+vendor: Speculum
+homepage: https://github.com/pierrejochem/Speculum
+license: MIT
+
+# Runtime X/render libs Skiko needs (the JRE itself is bundled in the app-image).
+depends:
+  - fontconfig
+overrides:
+  rpm:
+    depends:
+      - fontconfig
+      - freetype
+      - libX11
+      - libXext
+      - libXrender
+      - libXtst
+      - libXi
+  deb:
+    depends:
+      - libfontconfig1
+      - libfreetype6
+      - libx11-6
+      - libxext6
+      - libxrender1
+      - libxtst6
+      - libxi6
+
+contents:
+  # The self-contained app-image (launcher + bundled JRE + plugins + web admin).
+  - src: composeApp/build/compose/binaries/main/app/speculum/
+    dst: /opt/speculum
+
+  # Put the launcher on PATH (jpackage never did this for deb/rpm).
+  - src: /opt/speculum/bin/speculum
+    dst: /usr/bin/speculum
+    type: symlink
+
+  # Kiosk systemd unit at the proper system path (enable manually). Not a
+  # conffile: it's a vendor unit under /usr/lib, so upgrades should refresh it;
+  # operators override via `systemctl edit --full` (writes to /etc).
+  - src: packaging/systemd/speculum.service
+    dst: /usr/lib/systemd/system/speculum.service
+
+  - src: packaging/arch/speculum.desktop
+    dst: /usr/share/applications/speculum.desktop
+
+  - src: composeApp/icons/speculum.png
+    dst: /usr/share/icons/hicolor/512x512/apps/speculum.png
+
+scripts:
+  postinstall: packaging/nfpm/postinstall.sh
+  postremove: packaging/nfpm/postremove.sh

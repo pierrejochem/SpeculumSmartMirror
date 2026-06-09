@@ -8,8 +8,11 @@ permissions:
   contents: write
 
 jobs:
-  # Native .deb + .rpm for both arches. jpackage can't cross-compile, so each
-  # arch builds on its own native runner (free for public repos — no QEMU).
+  # .deb + .rpm for both arches. Build the Compose app-image with jpackage
+  # (`createDistributable`) — which can't cross-compile, so each arch runs on its
+  # own native runner (free for public repos, no QEMU) — then wrap it with nfpm.
+  # nfpm (not jpackage's installer) gives the /usr/bin symlink, the systemd unit
+  # at /usr/lib/systemd, and the postinstall/postremove scripts.
   linux-deb-rpm:
     strategy:
       fail-fast: false
@@ -34,30 +37,53 @@ jobs:
           npm ci
           npm run build
 
-      # eclipse-temurin is Debian-based: apt provides dpkg/fakeroot (deb) and the
-      # `rpm` package provides rpmbuild (rpm), so one container builds both.
-      - name: Build .deb + .rpm (${{ matrix.arch }})
+      # Build the self-contained app-image (launcher + bundled JRE + plugins +
+      # web admin). createDistributable also runs prepareAppResources, which
+      # bundles the module JARs and the web UI built above.
+      - name: Build app-image (${{ matrix.arch }})
         run: |
           docker run --rm -v "$PWD":/src -w /src eclipse-temurin:17-jdk bash -c "
-            apt-get update -qq &&
-            apt-get install -y -qq fakeroot binutils dpkg rpm >/dev/null &&
-            ./gradlew packageDeb packageRpm --no-daemon --stacktrace
+            ./gradlew :composeApp:createDistributable --no-daemon --stacktrace
           "
+
+      # nfpm turns the one app-image into both a .deb and a .rpm, adding the
+      # /usr/bin symlink, systemd unit and maintainer scripts (see
+      # packaging/nfpm/nfpm.yaml). PKG_ARCH is the Debian arch; nfpm maps it to
+      # the rpm arch automatically.
+      - name: Install nfpm
+        env:
+          NFPM_VERSION: "2.43.0"
+        run: |
+          case "${{ matrix.arch }}" in
+            arm64) NFPM_ARCH=arm64 ;;
+            amd64) NFPM_ARCH=x86_64 ;;
+          esac
+          curl -fsSL "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_${NFPM_ARCH}.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin nfpm
+
+      - name: Package .deb + .rpm (${{ matrix.arch }})
+        env:
+          PKG_ARCH: ${{ matrix.arch }}
+          PKG_VERSION: ${{ github.ref_name }}
+        run: |
+          export PKG_VERSION="${PKG_VERSION#v}"   # strip leading "v" from the tag
+          nfpm pkg --config packaging/nfpm/nfpm.yaml --packager deb --target dist/
+          nfpm pkg --config packaging/nfpm/nfpm.yaml --packager rpm --target dist/
 
       - name: Upload to workflow artifacts
         uses: actions/upload-artifact@v7
         with:
           name: speculum-linux-${{ matrix.arch }}
           path: |
-            composeApp/build/compose/binaries/main/deb/*.deb
-            composeApp/build/compose/binaries/main/rpm/*.rpm
+            dist/*.deb
+            dist/*.rpm
 
       - name: Attach to GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            composeApp/build/compose/binaries/main/deb/*.deb
-            composeApp/build/compose/binaries/main/rpm/*.rpm
+            dist/*.deb
+            dist/*.rpm
           generate_release_notes: true
 
   # Arch package for both arches (the PKGBUILD installs the app-image).
