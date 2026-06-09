@@ -28,6 +28,16 @@ User=pi
 # logs "adding faulty module". deb/rpm/Arch install the file; for the manual
 # copy above, also: sudo cp packaging/pam/speculum /etc/pam.d/speculum
 PAMName=speculum
+# Compose Desktop renders through AWT, so it needs Xwayland (DISPLAY=:1). Don't
+# force the *compositor* to software (WLR_RENDERER=pixman) — that strips GL from
+# wlroots and makes Xwayland's startup fail:
+#   [xwayland/server.c] Xwayland startup failed
+#   java.awt.AWTError: Can't connect to X11 window server using ':1'
+# Instead leave cage/Xwayland on the GPU and force only Skiko (the app's
+# renderer) to software raster, which avoids GL crashes on old Intel GPUs.
+# JAVA_TOOL_OPTIONS is picked up automatically by the bundled JRE.
+# Drop this on hardware with working GPU acceleration for better performance.
+Environment=JAVA_TOOL_OPTIONS=-Dskiko.renderApi=SOFTWARE
 # cage launches a minimal Wayland session and runs Speculum fullscreen in it.
 ExecStart=/usr/bin/cage -s -- /opt/speculum/bin/speculum
 Restart=on-failure
