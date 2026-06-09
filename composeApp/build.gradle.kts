@@ -49,11 +49,13 @@ compose.desktop {
         mainClass = "org.speculum.MainKt"
 
         nativeDistributions {
-            // Deb (Raspberry Pi OS / Debian) + Rpm (Fedora / RHEL / openSUSE).
-            // Build ON the target arch — jpackage cannot cross-compile. See
-            // PACKAGING.md. (packageDeb needs fakeroot/dpkg; packageRpm needs
-            // rpmbuild.)
-            targetFormats(TargetFormat.Deb, TargetFormat.Rpm)
+            // Release .deb/.rpm are built by wrapping `createDistributable` with
+            // nfpm (packaging/nfpm/nfpm.yaml) — it adds the /usr/bin symlink,
+            // systemd unit and maintainer scripts that jpackage's installer
+            // can't. AppImage is enough for the app-image; Deb/Rpm stay listed
+            // so `./gradlew packageDeb` still works for ad-hoc local builds
+            // (build ON the target arch — jpackage cannot cross-compile).
+            targetFormats(TargetFormat.AppImage, TargetFormat.Deb, TargetFormat.Rpm)
             packageName = "speculum"
             packageVersion = appVersion
             description = "Speculum — modular smart-mirror dashboard"
@@ -110,16 +112,13 @@ val bundleWeb by tasks.registering(Copy::class) {
     into(layout.projectDirectory.dir("app-resources/common/web"))
 }
 
-// Ship the kiosk systemd unit inside the .deb/.rpm (jpackage can't place files
-// in /usr/lib/systemd, so it lands under the app resources dir for the user to
-// copy — see PACKAGING.md). The Arch package installs it to the proper path.
-val bundleSystemd by tasks.registering(Copy::class) {
-    from(rootProject.layout.projectDirectory.file("packaging/systemd/speculum.service"))
-    into(layout.projectDirectory.dir("app-resources/common"))
-}
+// The kiosk systemd unit is no longer bundled into the app resources: all three
+// packages install it to the proper system path themselves — nfpm for .deb/.rpm
+// (packaging/nfpm/nfpm.yaml) and the PKGBUILD for Arch — straight from
+// packaging/systemd/speculum.service.
 
 tasks.matching { it.name == "prepareAppResources" }
-    .configureEach { dependsOn(bundlePlugins, bundleWeb, bundleSystemd) }
+    .configureEach { dependsOn(bundlePlugins, bundleWeb) }
 
 compose.resources {
     publicResClass = true

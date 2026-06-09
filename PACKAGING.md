@@ -1,15 +1,17 @@
 # Packaging for Raspberry Pi (Raspbian / Raspberry Pi OS)
 
-The app builds a native `.deb` (Debian package) via Compose Desktop + `jpackage`.
-The `.deb` bundles a JRE, all module plugin JARs, **and** the web admin UI. One
-process runs both the fullscreen mirror and the config server (on `:8080`), so
-the Pi needs no separate Java install and the admin works out of the box.
+The app builds a native `.deb` (Debian package) from a Compose Desktop + `jpackage`
+app-image, packaged with [`nfpm`](https://nfpm.goreleaser.com). The `.deb` bundles
+a JRE, all module plugin JARs, **and** the web admin UI. One process runs both the
+fullscreen mirror and the config server (on `:8080`), so the Pi needs no separate
+Java install and the admin works out of the box.
 
 ## Important: build on the Pi (no cross-compilation)
 
-`jpackage` only produces installers for the **OS and CPU architecture it runs
-on**. You cannot build a Raspberry Pi `.deb` from macOS or x86 Linux. Build it
-on the Pi itself, or on any **arm64** Linux machine / container.
+`jpackage` only builds the app-image for the **OS and CPU architecture it runs
+on**, so you cannot build a Raspberry Pi `.deb` from macOS or x86 Linux. Build it
+on the Pi itself, or on any **arm64** Linux machine / container. (nfpm wrapping
+the image is pure-Go and arch-agnostic, but the JRE inside the image is not.)
 
 Use **64-bit Raspberry Pi OS (arm64)** — the Compose renderer (Skiko) ships
 `linux-arm64` natives but **not** 32-bit `armhf`. A Pi 3/4/5 on the 64-bit OS works.
@@ -18,23 +20,40 @@ Use **64-bit Raspberry Pi OS (arm64)** — the Compose renderer (Skiko) ships
 
 ```bash
 sudo apt update
-sudo apt install -y openjdk-17-jdk fakeroot binutils dpkg
+sudo apt install -y openjdk-17-jdk
 java -version          # should report 17 (arm64)
 ```
 
-`fakeroot` + `dpkg` are what `jpackage` uses to assemble the `.deb`.
+That JDK is all `createDistributable` needs. nfpm builds the `.deb`/`.rpm` in
+pure Go — no `fakeroot`/`dpkg`/`rpmbuild` — install it from
+<https://nfpm.goreleaser.com/install/> (a single static binary).
 
 ## Build the package
+
+The `.deb`/`.rpm` are built in two steps: `jpackage` produces the self-contained
+**app-image** (launcher + bundled JRE + plugins + web admin under `/opt/speculum`),
+then [`nfpm`](https://nfpm.goreleaser.com) wraps that image into a `.deb` and a
+`.rpm`. nfpm — not jpackage's installer — adds the `/usr/bin/speculum` symlink
+(so the launcher is on `PATH`), installs the systemd unit at its proper path,
+and runs the post-install scripts. This is the same app-image the Arch `PKGBUILD`
+wraps, so all three formats behave alike.
 
 ```bash
 git clone <your-repo> && cd Speculum
 (cd config-server/web && npm install && npm run build)   # build the admin UI
-./gradlew packageDeb
+./gradlew :composeApp:createDistributable                # → the app-image
+
+# install nfpm once (https://nfpm.goreleaser.com/install/), then:
+PKG_VERSION=1.0.0 PKG_ARCH=arm64 \
+  nfpm pkg --config packaging/nfpm/nfpm.yaml --packager deb --target dist/
+PKG_VERSION=1.0.0 PKG_ARCH=arm64 \
+  nfpm pkg --config packaging/nfpm/nfpm.yaml --packager rpm --target dist/
 ```
 
-This runs, in order: build every module → copy the JARs + the web UI build into
-the app resources (`bundlePlugins` / `bundleWeb`) → `jpackage` the app with a
-bundled JRE and the embedded config server.
+`createDistributable` first builds every module → copies the JARs + the web UI
+build into the app resources (`bundlePlugins` / `bundleWeb`) → assembles the
+app-image with a bundled JRE and the embedded config server. `PKG_ARCH` is the
+Debian arch (`arm64` / `amd64`); nfpm maps it to the rpm arch automatically.
 
 > Build the web UI first. If `config-server/web/dist` is missing the package
 > still works as a mirror, but the admin page won't be served.
@@ -42,17 +61,55 @@ bundled JRE and the embedded config server.
 Output:
 
 ```
-composeApp/build/compose/binaries/main/deb/speculum_1.0.0-1_arm64.deb
+dist/speculum_1.0.0_arm64.deb
+dist/speculum-1.0.0.aarch64.rpm
 ```
+
+(`./gradlew packageDeb` still works for ad-hoc local builds, but its output goes
+to `/opt/speculum/bin/speculum` only — no `PATH` symlink and no systemd unit
+installed. Use the nfpm flow for anything you ship.)
+
+### Validate the nfpm config locally
+
+If `nfpm` is installed you can sanity-check `nfpm.yaml` — and the symlink,
+systemd unit and scripts it injects — without an app-image present. The
+`${PKG_ARCH}`/`${PKG_VERSION}` env vars must be set or nfpm errors on the empty
+fields:
+
+```bash
+# Parse + validate the schema only (no package written). Fails on bad keys,
+# missing required fields, or unresolved env vars.
+PKG_VERSION=0.0.0 PKG_ARCH=arm64 \
+  nfpm package --config packaging/nfpm/nfpm.yaml --packager deb --target /dev/null
+```
+
+`createDistributable` need not have run for this — nfpm validates the config
+before reading the `contents` sources, so it reports config errors immediately.
+To also confirm the *contents* (the `/opt/speculum` tree, symlink, unit), build
+the app-image first, produce a real `.deb`, then inspect it:
+
+```bash
+./gradlew :composeApp:createDistributable
+PKG_VERSION=0.0.0 PKG_ARCH=arm64 \
+  nfpm package --config packaging/nfpm/nfpm.yaml --packager deb --target dist/
+
+dpkg-deb -c dist/speculum_0.0.0_arm64.deb     # list files → expect /usr/bin/speculum
+                                              #   symlink + the .service unit
+dpkg-deb -e dist/speculum_0.0.0_arm64.deb /tmp/spec-ctl && cat /tmp/spec-ctl/postinst
+```
+
+(No local `nfpm`? Install it from <https://nfpm.goreleaser.com/install/>, or just
+push a `v*` tag and let the `linux-deb-rpm` CI job build + validate.)
 
 ## Install & run
 
 ```bash
-sudo apt install ./composeApp/build/compose/binaries/main/deb/speculum_1.0.0-1_arm64.deb
-/opt/speculum/bin/speculum        # fullscreen mirror + admin on :8080
+sudo apt install ./dist/speculum_1.0.0_arm64.deb     # or: sudo dnf install ./dist/speculum-1.0.0.aarch64.rpm
+speculum        # now on PATH — fullscreen mirror + admin on :8080
 ```
 
-(Install path is `/opt/<packageName>`. A menu entry "Speculum" is also created.)
+(Install path is `/opt/speculum`; nfpm symlinks `/usr/bin/speculum` to it. A menu
+entry "Speculum" is also created.)
 
 One launch starts **both** the mirror and the config web admin. Open the admin
 from any device on the network at `http://<pi-ip>:8080` (default password
@@ -71,22 +128,23 @@ Two options depending on whether you run a desktop session or Pi OS Lite.
 
 ### A. systemd service (Pi OS Lite / headless — recommended)
 
-A ready unit ships with every package. It uses [`cage`](https://github.com/cage-kiosk/cage),
-a minimal Wayland kiosk compositor, to run the mirror fullscreen on the console
-with no desktop environment.
+Every package now installs the unit to `/usr/lib/systemd/system/speculum.service`
+(deb, rpm and Arch alike) and runs `systemctl daemon-reload` on install. It uses
+[`cage`](https://github.com/cage-kiosk/cage), a minimal Wayland kiosk compositor,
+to run the mirror fullscreen on the console with no desktop environment. It is
+**not** auto-enabled — the unit ships with `User=pi` and needs `cage`, so enabling
+is a deliberate one-time step:
 
 ```bash
-sudo apt install -y cage          # or: sudo pacman -S cage
+sudo apt install -y cage          # or: sudo pacman -S cage / sudo dnf install cage
 
-# Arch already installs the unit at /usr/lib/systemd/system/speculum.service.
-# deb/rpm ship it under the app resources — copy it into place:
-sudo cp /opt/speculum/lib/app/resources/speculum.service /etc/systemd/system/
-
-sudoedit /etc/systemd/system/speculum.service   # set User= to your account (e.g. pi)
-sudo systemctl daemon-reload
+sudo systemctl edit --full speculum.service     # set User= to your account (e.g. pi)
 sudo systemctl enable --now speculum.service     # starts now + on every boot
 journalctl -u speculum -f                         # follow logs
 ```
+
+(`systemctl edit --full` drops your changes in `/etc/systemd/system/` so a package
+upgrade won't overwrite them.)
 
 ### B. Desktop (X11) autostart
 
@@ -124,25 +182,32 @@ Two options on the installed Pi:
 
 ## Customising the package
 
-In `composeApp/build.gradle.kts` → `nativeDistributions`:
+The `.deb`/`.rpm` metadata, files, symlinks, dependencies and maintainer scripts
+live in **[`packaging/nfpm/nfpm.yaml`](packaging/nfpm/nfpm.yaml)** (plus
+`postinstall.sh` / `postremove.sh` beside it) — edit there to change the install
+layout, add a file, or adjust per-distro `depends`.
 
-- `packageVersion` — bump for each release.
-- `targetFormats(TargetFormat.Deb, TargetFormat.Rpm)` — builds `.deb` + `.rpm`
-  (run `./gradlew packageDeb packageRpm`; `.rpm` needs `rpmbuild` installed).
-- `linux { … }` — package name, menu group, icon. The icon is set from
+The app-image itself is configured in `composeApp/build.gradle.kts` →
+`nativeDistributions`:
+
+- `linux { … }` — menu group, icon. The icon is set from
   `iconFile.set(layout.projectDirectory.file("icons/speculum.png"))`
   (`composeApp/icons/speculum.png`, generated from `Images/speculum-icon.svg`).
 - `includeAllModules = true` bundles a complete JRE (simplest). To shrink the
   image, remove it and list `modules(...)` explicitly, or use `suggestModules`
   (`./gradlew suggestModules`) to detect the needed JDK modules.
+- `appVersion` (top of the file) sets the running app's reported version; the
+  *package* version comes from `PKG_VERSION` passed to nfpm (the release tag in
+  CI). Keep them in sync for releases.
 
 ## Releases (CI)
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) runs on every
 `v*` tag push, in parallel:
 
-- **`linux-deb-rpm`** (matrix: `arm64`, `amd64`) — builds the `.deb` **and**
-  `.rpm` for each arch and attaches them to the GitHub Release.
+- **`linux-deb-rpm`** (matrix: `arm64`, `amd64`) — builds the app-image
+  (`createDistributable`) then wraps it with nfpm into the `.deb` **and** `.rpm`
+  for each arch and attaches them to the GitHub Release.
 - **`arch`** (matrix: `aarch64`, `x86_64`) — builds the Arch `.pkg.tar.*` (via
   the PKGBUILD) for each arch and attaches it.
 - **`publish-mirror-api`** — publishes `org.speculum:mirror-api:<tag-without-v>`
@@ -207,13 +272,20 @@ fullscreen mirror + admin on `:8080`; config lives at `~/.speculum/config.json`.
 
 ## Build on x86 with Docker (alternative to building on the Pi)
 
+Build the arm64 app-image under emulation, then run nfpm on the host (it's
+arch-agnostic):
+
 ```bash
 docker run --rm --platform linux/arm64 -v "$PWD":/src -w /src \
   eclipse-temurin:17-jdk bash -c \
-  "apt-get update && apt-get install -y fakeroot binutils dpkg && ./gradlew packageDeb"
+  "(cd config-server/web && npm ci && npm run build) && ./gradlew :composeApp:createDistributable"
+
+PKG_VERSION=1.0.0 PKG_ARCH=arm64 \
+  nfpm pkg --config packaging/nfpm/nfpm.yaml --packager deb --target dist/
 ```
 
-(Uses QEMU emulation; slower, but produces the arm64 `.deb` without a physical Pi.)
+(The build uses QEMU emulation; slower, but produces the arm64 `.deb` without a
+physical Pi.)
 
 ## Low-power devices (Raspberry Pi 3B and similar)
 
