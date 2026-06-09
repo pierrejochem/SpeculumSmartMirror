@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Showcase — Speculum</title>
+<meta name="description" content="The default Speculum modules — clock, weather, forecast, calendar, compliments, newsfeed, update notifier — and what each one does.">
+<link rel="icon" href="assets/img/speculum-icon.svg">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html"><img src="assets/img/speculum-icon.svg" alt=""> Speculum</a>
+    <button class="menu-toggle" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('open')">☰</button>
+    <nav class="nav-links" id="nav">
+      <a href="index.html">Home</a>
+      <a href="getting-started.html">Getting Started</a>
+      <a href="showcase.html" class="active">Showcase</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="api-reference.html">API Reference</a>
+      <a href="user-guide.html">User Guide</a>
+      <a href="https://github.com/pierrejochem/Speculum" class="gh">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p class="kicker">Showcase</p>
+  <h1>What it looks like</h1>
+  <p class="lead">Bright modules float on pure black and arrange themselves by screen region. Behind two-way glass, only the lit pixels show — the mirror does the rest.</p>
+
+  <figure>
+    <img class="shot" src="assets/img/shot-mirror.png" alt="Speculum mirror running fullscreen — clock and calendar top-left, weather and 7-day forecast top-right, compliment centered, QR config code bottom-left, newsfeed along the bottom">
+    <figcaption>The live fullscreen mirror: clock, calendar, weather and forecast, a compliment, the QR config link, and a rotating newsfeed — every default plugin in its region.</figcaption>
+  </figure>
+
+  <h2>Default modules</h2>
+  <p>Each ships as its own Gradle subproject under <code>modules/</code>, built to a JAR in <code>plugins/</code>.</p>
+
+  <div class="grid cols-2">
+    <div class="card">
+      <h3>🕐 Clock</h3>
+      <p>Live time and date with an optional analog face. Turn off seconds (<code>displaySeconds=false</code>) to recompose once a minute — the biggest CPU win on low-power devices.</p>
+      <p class="muted" style="margin-top:.6rem;"><code>modules/clock-module</code></p>
+    </div>
+    <div class="card">
+      <h3>🌤 Weather</h3>
+      <p>Current conditions from the free Open-Meteo API. Monochrome vector glyphs drawn with <code>Canvas</code> so icons stay pure white.</p>
+      <p class="muted" style="margin-top:.6rem;"><code>modules/weather-module</code></p>
+    </div>
+    <div class="card">
+      <h3>📅 Weather forecast</h3>
+      <p>Multi-day outlook with the same monochrome vector icon set. Ships in the weather JAR.</p>
+      <p class="muted" style="margin-top:.6rem;"><code>modules/weather-module</code></p>
+    </div>
+    <div class="card">
+      <h3>🗓 Calendar</h3>
+      <p>Upcoming events pulled from ICS feeds, parsed dependency-free with a regex reader.</p>
+      <p class="muted" style="margin-top:.6rem;"><code>modules/calendar-module</code></p>
+    </div>
+    <div class="card">
+      <h3>💬 Compliments</h3>
+      <p>Time-of-day greetings and date specials — the friendly MagicMirror staple.</p>
+      <p class="muted" style="margin-top:.6rem;"><code>modules/compliments-module</code></p>
+    </div>
+    <div class="card">
+      <h3>📰 Newsfeed</h3>
+      <p>Rotating RSS/Atom headlines, regex-parsed. Optionally shows the source title.</p>
+      <p class="muted" style="margin-top:.6rem;"><code>modules/newsfeed-module</code></p>
+    </div>
+    <div class="card">
+      <h3>⬆️ Update notifier</h3>
+      <p>A top-center banner when a newer GitHub release exists for the project.</p>
+      <p class="muted" style="margin-top:.6rem;"><code>modules/updatenotifier-module</code></p>
+    </div>
+    <div class="card">
+      <h3>📓 Example</h3>
+      <p>A fully-commented reference module demonstrating config reading, lifecycle, notifications, state, and JAR packaging.</p>
+      <p class="muted" style="margin-top:.6rem;"><code>modules/example-module</code></p>
+    </div>
+  </div>
+
+  <h2>Configure from any browser</h2>
+  <p>The desktop app starts the config admin in-process, so the same package serves both the fullscreen mirror and a web UI on port <code>8080</code>. Scan the on-screen QR code or open the address from any device on the network.</p>
+
+  <div class="grid cols-2">
+    <figure>
+      <img class="shot" src="assets/img/shot-config-login.png" alt="Speculum config admin sign-in screen with the Speculum wordmark and a password field on a dark background">
+      <figcaption>Password-gated sign-in (signed bearer tokens, no external auth lib).</figcaption>
+    </figure>
+    <figure>
+      <img class="shot" src="assets/img/shot-config-editor.png" alt="Speculum config editor showing global language/time-format/units settings and per-module position, refresh interval and config key-value rows">
+      <figcaption>Edit global settings and per-module position, refresh interval and config — the mirror reloads automatically on save.</figcaption>
+    </figure>
+  </div>
+
+  <h2>The mirror palette</h2>
+  <p>Three brightness tiers on black — the entire visual language. Section headers follow MagicMirror style: <code>UPPERCASE</code>, <code>letterSpacing = 2.sp</code>, dimmed.</p>
+  <div class="grid cols-3">
+    <div class="card" style="background:#000;">
+      <div style="color:#fff;font-size:1.5rem;font-weight:700;">Bright</div>
+      <p class="muted"><code>#FFFFFF</code> — headlines, values</p>
+    </div>
+    <div class="card" style="background:#000;">
+      <div style="color:#999;font-size:1.5rem;font-weight:700;">Normal</div>
+      <p class="muted"><code>#999999</code> — labels</p>
+    </div>
+    <div class="card" style="background:#000;">
+      <div style="color:#666;font-size:1.5rem;font-weight:700;">Dimmed</div>
+      <p class="muted"><code>#666666</code> — secondary / headers</p>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:2rem;"><strong>Want your own?</strong> Modules auto-place themselves once their JAR lands in <code>plugins/</code>. Build one with the <a href="api-reference.html">API Reference</a> or rearrange the defaults in the <a href="user-guide.html#admin">web admin</a>.</div>
+</main>
+
+<footer class="site">
+  <div class="footer-inner">
+    <span>Speculum — modular smart-mirror dashboard.</span>
+    <span class="footer-links">
+      <a href="https://github.com/pierrejochem/Speculum">GitHub</a>
+      <a href="getting-started.html">Getting Started</a>
+      <a href="api-reference.html">API Reference</a>
+    </span>
+  </div>
+</footer>
+</body>
+</html>

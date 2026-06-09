@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture — Speculum</title>
+<meta name="description" content="How Speculum boots: ConfigLoader, MirrorEngine, the plugin loader (ServiceLoader over plugins/*.jar), the refresh loop, the notification bus, and region-based layout.">
+<link rel="icon" href="assets/img/speculum-icon.svg">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html"><img src="assets/img/speculum-icon.svg" alt=""> Speculum</a>
+    <button class="menu-toggle" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('open')">☰</button>
+    <nav class="nav-links" id="nav">
+      <a href="index.html">Home</a>
+      <a href="getting-started.html">Getting Started</a>
+      <a href="showcase.html">Showcase</a>
+      <a href="architecture.html" class="active">Architecture</a>
+      <a href="api-reference.html">API Reference</a>
+      <a href="user-guide.html">User Guide</a>
+      <a href="https://github.com/pierrejochem/Speculum" class="gh">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p class="kicker">Architecture</p>
+  <h1>How Speculum boots</h1>
+  <p class="lead">Global config + discovered plugins feed a single engine that starts each module, drives its refresh loop, fans out notifications, and renders it into a screen region.</p>
+
+  <div class="toc">
+    <strong>On this page</strong>
+    <ul>
+      <li><a href="#boot">Boot flow</a></li>
+      <li><a href="#modules">Module ↔ component map</a></li>
+      <li><a href="#plugins">Plugin discovery</a></li>
+      <li><a href="#config">Config resolution</a></li>
+      <li><a href="#regions">Regions &amp; layout</a></li>
+      <li><a href="#hotreload">Hot reload</a></li>
+    </ul>
+  </div>
+
+  <h2 id="boot">Boot flow</h2>
+  <pre><code>ConfigLoader (global options)        plugins/*.jar
+        │                                  │  ServiceLoader (reflection)
+        └──────────────┬───────────────────┘
+                       ▼
+            MirrorEngine.boot()
+              ├─ ModuleRegistry.create() per entry
+              ├─ module.start(scope)
+              ├─ per-module refresh loop (interval)
+              └─ notification bus (broadcast)
+                       │
+            MirrorScreen renders each module.Content() into its Region</code></pre>
+  <p>Each <code>ModuleFactory</code> contributes its own <code>defaultConfig()</code>, so modules appear automatically once their JAR is in <code>plugins/</code> — no config edit needed.</p>
+
+  <h2 id="modules">Module ↔ component map</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Piece</th><th>Module / File</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td><code>MirrorModule</code></td><td><code>:mirror-api</code> · <code>core/MirrorModule.kt</code></td><td>Base class every module extends</td></tr>
+      <tr><td><code>ModuleConfig</code></td><td><code>:mirror-api</code> · <code>config/ModuleConfig.kt</code></td><td>One config entry + typed getters</td></tr>
+      <tr><td><code>ModuleFactory</code></td><td><code>:mirror-api</code> · <code>core/ModuleFactory.kt</code></td><td>SPI for external JAR modules</td></tr>
+      <tr><td><code>Region</code> / <code>MirrorColors</code></td><td><code>:mirror-api</code></td><td>Screen positions / brightness palette</td></tr>
+      <tr><td><code>ModuleRegistry</code></td><td><code>:composeApp</code> · <code>core/ModuleRegistry.kt</code></td><td>Maps <code>module</code> name → class; <code>register()</code> for plugins</td></tr>
+      <tr><td><code>discoverPluginFactories</code></td><td><code>:composeApp</code> · <code>core/PluginLoader.kt</code></td><td>Loads JARs from <code>plugins/</code> via ServiceLoader</td></tr>
+      <tr><td><code>MirrorEngine</code></td><td><code>:composeApp</code> · <code>core/MirrorEngine.kt</code></td><td>Boots modules, drives refresh, notification bus</td></tr>
+      <tr><td><code>ConfigLoader</code></td><td><code>:composeApp</code> · <code>config/ConfigLoader.kt</code></td><td>The bundled default <code>config.js</code> equivalent</td></tr>
+      <tr><td><code>MirrorScreen</code></td><td><code>:composeApp</code> · <code>ui/MirrorScreen.kt</code></td><td>Lays modules out by region</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>The shared API (<code>MirrorModule</code>, <code>ModuleConfig</code>, <code>Region</code>, <code>MirrorColors</code>, <code>ModuleFactory</code>) lives in <code>:mirror-api</code> so both the app and external plugins compile against it.</p>
+
+  <h2 id="plugins">Plugin discovery</h2>
+  <p>All default modules ship as external JAR plugins. There are two ways to add a module:</p>
+  <ol>
+    <li><strong>External JAR plugin</strong> (recommended) — a standalone Gradle subproject built to a JAR in <code>plugins/</code>, discovered at runtime.</li>
+    <li><strong>Built-in</strong> — a class compiled into <code>:composeApp</code> and added to <code>ModuleRegistry.builtins</code>. Ships inside the app JAR; <code>builtins</code> is empty by default.</li>
+  </ol>
+  <p>For an external plugin, at startup:</p>
+  <ol>
+    <li>It compiles against <code>:mirror-api</code> as <strong><code>compileOnly</code></strong>, so the JAR holds only its own classes — Compose and the API are provided by the host at runtime via the parent classloader.</li>
+    <li>It implements <code>ModuleFactory</code> and declares it in <code>META-INF/services/org.speculum.core.ModuleFactory</code>.</li>
+    <li><code>PluginLoader</code> scans <code>plugins/*.jar</code>, loads each in a <code>URLClassLoader</code> (parent = app), and finds factories via the JDK <code>ServiceLoader</code> (reflection).</li>
+    <li>Each factory is <code>register()</code>ed and its <code>defaultConfig()</code> is appended automatically (unless an entry already names that module), ordered by <code>ModuleFactory.order</code> so stacking within a region is deterministic.</li>
+  </ol>
+  <div class="note"><strong>Source vs. runtime folders:</strong> subprojects live under <code>modules/</code>; their built JARs are deployed into <code>plugins/</code> (the folder the app scans). They're kept separate so Gradle doesn't see build outputs landing inside the source tree.</div>
+
+  <h2 id="config">Config resolution</h2>
+  <p>The web admin and the app share one config file. Resolution rule:</p>
+  <ul>
+    <li>A <strong>non-empty</strong> <code>modules</code> list is authoritative — exactly those entries, in that order.</li>
+    <li>An <strong>empty</strong> list means "use every installed plugin's default placement" — the out-of-box mirror.</li>
+  </ul>
+  <p>So the admin's first load shows all modules; saving captures an explicit, editable set.</p>
+
+  <h2 id="regions">Regions &amp; layout</h2>
+  <p><code>position</code> maps (case-insensitively) to a <code>Region</code>. <code>MirrorScreen</code> anchors top regions to the top, centers the <code>*_third</code> bands in the remaining space (so they never overlap on resize), and anchors bottom regions + <code>bottom_bar</code> to the bottom. Multiple modules in the same region stack vertically.</p>
+  <pre><code>top_left      top_center      top_right
+upper_third   middle_center   lower_third
+bottom_left   bottom_center   bottom_right
+bottom_bar    fullscreen_above fullscreen_below</code></pre>
+
+  <h2 id="hotreload">Hot reload</h2>
+  <p>The config server writes the same <code>config.json</code> the desktop app reads. The running mirror <strong>watches that file</strong> and reboots its engine in-process on save — no restart. On a packaged install both run in one process: the fullscreen mirror plus the admin on <code>:8080</code>.</p>
+
+  <div class="btn-row" style="justify-content:flex-start;">
+    <a class="btn primary" href="api-reference.html">API Reference →</a>
+    <a class="btn" href="https://github.com/pierrejochem/Speculum/blob/main/DEVELOPER_GUIDE.md">Developer Guide ↗</a>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="footer-inner">
+    <span>Speculum — modular smart-mirror dashboard.</span>
+    <span class="footer-links">
+      <a href="https://github.com/pierrejochem/Speculum">GitHub</a>
+      <a href="getting-started.html">Getting Started</a>
+      <a href="user-guide.html">User Guide</a>
+    </span>
+  </div>
+</footer>
+</body>
+</html>

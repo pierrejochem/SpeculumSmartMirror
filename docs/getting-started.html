@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting Started — Speculum</title>
+<meta name="description" content="Install prerequisites, build, and run the Speculum smart-mirror dashboard; launch the web admin and add your first module.">
+<link rel="icon" href="assets/img/speculum-icon.svg">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html"><img src="assets/img/speculum-icon.svg" alt=""> Speculum</a>
+    <button class="menu-toggle" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('open')">☰</button>
+    <nav class="nav-links" id="nav">
+      <a href="index.html">Home</a>
+      <a href="getting-started.html" class="active">Getting Started</a>
+      <a href="showcase.html">Showcase</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="api-reference.html">API Reference</a>
+      <a href="user-guide.html">User Guide</a>
+      <a href="https://github.com/pierrejochem/Speculum" class="gh">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p class="kicker">Getting Started</p>
+  <h1>Run your first mirror</h1>
+  <p class="lead">From a fresh clone to a fullscreen mirror in three commands — then open the web admin to configure it live.</p>
+
+  <div class="toc">
+    <strong>On this page</strong>
+    <ul>
+      <li><a href="#requirements">Requirements</a></li>
+      <li><a href="#run">Run the desktop app</a></li>
+      <li><a href="#admin">Web admin</a></li>
+      <li><a href="#layout">Project layout</a></li>
+      <li><a href="#next">First module</a></li>
+    </ul>
+  </div>
+
+  <h2 id="requirements">Requirements</h2>
+  <ul>
+    <li><strong>JDK 17–21.</strong> The Gradle wrapper (Gradle 8.9) runs on JDK 17–21. If your default <code>java</code> is newer, point <code>org.gradle.java.home</code> (in your <em>user</em> <code>~/.gradle/gradle.properties</code>) or <code>JAVA_HOME</code> at a 17/21 JDK.</li>
+    <li><strong>Node 18+ &amp; npm</strong> — only needed to build the web admin UI.</li>
+    <li>IntelliJ IDEA (recommended) or just the Gradle CLI.</li>
+  </ul>
+  <div class="note"><strong>Note:</strong> the desktop app is pure JVM. Module plugins are loaded with the JDK <code>URLClassLoader</code> + <code>ServiceLoader</code> — there is no Android or iOS target.</div>
+
+  <h2 id="run">Run the desktop app</h2>
+  <pre><code>git clone https://github.com/pierrejochem/Speculum.git
+cd Speculum
+./gradlew :composeApp:run</code></pre>
+  <p>That single command:</p>
+  <ol>
+    <li>runs the root <code>:deployModules</code> task — builds <strong>every</strong> module subproject and copies its JAR into <code>plugins/</code>;</li>
+    <li>launches the fullscreen mirror, which scans <code>plugins/</code> and loads each module via reflection.</li>
+  </ol>
+  <p>Press the OS fullscreen-exit shortcut to quit. The working directory must be the repo root so the app finds <code>plugins/</code> and <code>config.json</code>.</p>
+
+  <h2 id="admin">Web admin (configuration)</h2>
+  <p>A password-protected React UI + Ktor backend edits the mirror config (modules, positions, intervals, options). It writes the same <code>config.json</code> the app reads, and the running mirror <strong>hot-reloads automatically</strong> on save.</p>
+  <pre><code>cd config-server/web && npm install && npm run build   # build the UI once
+./gradlew :config-server:run                            # http://localhost:8080</code></pre>
+  <div class="warn"><strong>Security:</strong> bootstrap password is <code>admin</code>. Change it in the UI's <em>Security</em> card (persisted as a salted PBKDF2-HMAC-SHA256 hash) or seed it with <code>MIRROR_ADMIN_PASSWORD</code>. In production also set <code>MIRROR_ADMIN_SECRET</code> (the token-signing HMAC key).</div>
+  <p>For dev mode (Vite hot reload on <code>:5173</code> proxying to the backend), env vars, and the full REST API, see the <a href="user-guide.html#admin">User Guide</a> and <a href="api-reference.html#rest">API Reference</a>.</p>
+
+  <h2 id="layout">Project layout</h2>
+  <pre><code>mirror-api/            shared API: MirrorModule, ModuleConfig, Region,
+                       MirrorColors, ModuleFactory (compiled against by all)
+composeApp/            the desktop app (engine, layout, plugin loader, theme)
+modules/&lt;name&gt;-module/  one Gradle subproject per module  ─┐ built to JAR
+plugins/               deployed module JARs (scanned at runtime)  ◄┘
+config-server/         web admin: Ktor backend + React/Vite UI</code></pre>
+
+  <h2 id="next">Add your first module</h2>
+  <p>The fastest path: copy the fully-commented <code>example-module</code>, rename it, register it, add a config entry. In short:</p>
+  <ol>
+    <li>Create a <code>modules/&lt;name&gt;-module/</code> subproject with <code>compileOnly(project(":mirror-api"))</code>.</li>
+    <li>Implement <code>MirrorModule</code> + a <code>ModuleFactory</code>, declared in <code>META-INF/services/org.speculum.core.ModuleFactory</code>.</li>
+    <li>Register the subproject in <code>settings.gradle.kts</code> and the root <code>deployModules</code> task.</li>
+    <li>Run <code>./gradlew :composeApp:run</code> — your module is discovered and placed automatically.</li>
+  </ol>
+  <div class="btn-row" style="justify-content:flex-start;">
+    <a class="btn primary" href="api-reference.html">API Reference →</a>
+    <a class="btn" href="https://github.com/pierrejochem/Speculum/blob/main/DEVELOPER_GUIDE.md">Developer Guide ↗</a>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="footer-inner">
+    <span>Speculum — modular smart-mirror dashboard.</span>
+    <span class="footer-links">
+      <a href="https://github.com/pierrejochem/Speculum">GitHub</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="user-guide.html">User Guide</a>
+    </span>
+  </div>
+</footer>
+</body>
+</html>
