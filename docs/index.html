@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speculum — modular smart-mirror dashboard</title>
+<meta name="description" content="Speculum is a Compose for Desktop smart mirror application: a modular, plugin-based smart-mirror dashboard. Bright modules on pure black, behind two-way glass.">
+<meta property="og:title" content="Speculum — modular smart-mirror dashboard">
+<meta property="og:description" content="A Compose for Desktop smart mirror application. Modules are JAR plug-ins, discovered at runtime.">
+<meta property="og:image" content="assets/img/speculum-social.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="assets/img/speculum-icon.svg">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html"><img src="assets/img/speculum-icon.svg" alt=""> Speculum</a>
+    <button class="menu-toggle" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('open')">☰</button>
+    <nav class="nav-links" id="nav">
+      <a href="index.html" class="active">Home</a>
+      <a href="getting-started.html">Getting Started</a>
+      <a href="showcase.html">Showcase</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="api-reference.html">API Reference</a>
+      <a href="user-guide.html">User Guide</a>
+      <a href="https://github.com/pierrejochem/Speculum" class="gh">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <img class="logo" src="assets/img/speculum-logo.svg" alt="Speculum">
+    <p class="eyebrow">Compose for Desktop · JVM · Plugin-based</p>
+    <p class="lead">A reimagining of <a href="https://github.com/MagicMirrorOrg/MagicMirror">MagicMirror²</a> as a
+      modular smart-mirror dashboard. Bright modules on a pure-black background, so it reflects
+      as a "magic mirror" behind two-way glass. Starts fullscreen.</p>
+    <div class="btn-row">
+      <a class="btn primary" href="getting-started.html">Get started →</a>
+      <a class="btn" href="https://github.com/pierrejochem/Speculum">View on GitHub</a>
+      <a class="btn" href="showcase.html">See it run</a>
+    </div>
+  </section>
+
+  <p class="lead center" style="margin:2.5rem auto 0;">
+    Modules are <strong style="color:var(--bright)">plug-ins</strong>: each ships as its own JAR, dropped into
+    <code>plugins/</code>, discovered at runtime via reflection — add or remove features without rebuilding the app.
+  </p>
+
+  <h2>Why Speculum</h2>
+  <div class="grid cols-3">
+    <div class="card">
+      <span class="ic">🧩</span>
+      <h3>Drop-in modules</h3>
+      <p>Each feature is a standalone JAR found by <code>ServiceLoader</code>. No app rebuild, no config edit — its default placement is auto-added.</p>
+    </div>
+    <div class="card">
+      <span class="ic">🪞</span>
+      <h3>True mirror palette</h3>
+      <p>Three MagicMirror brightness tiers on black. Icons are white vectors, never color emoji — only bright pixels show through two-way glass.</p>
+    </div>
+    <div class="card">
+      <span class="ic">⚡</span>
+      <h3>Hot-reloading admin</h3>
+      <p>A password-protected web UI edits <code>config.json</code>; the running mirror watches the file and reboots its engine on save.</p>
+    </div>
+    <div class="card">
+      <span class="ic">🍓</span>
+      <h3>Raspberry Pi ready</h3>
+      <p>Native <code>.deb</code> / <code>.rpm</code> / Arch packages bundle a JRE, every plugin, and the admin — one process, kiosk autostart.</p>
+    </div>
+    <div class="card">
+      <span class="ic">📦</span>
+      <h3>Published API</h3>
+      <p><code>org.speculum:mirror-api</code> ships to GitHub Packages on every release, so out-of-tree modules compile without the full checkout.</p>
+    </div>
+    <div class="card">
+      <span class="ic">🛡️</span>
+      <h3>Signed releases</h3>
+      <p>Every release carries <code>SHA256SUMS</code> with optional detached GPG signatures and a published public key.</p>
+    </div>
+  </div>
+
+  <h2>How it maps to MagicMirror²</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>MagicMirror² concept</th><th>Speculum</th></tr></thead>
+    <tbody>
+      <tr><td><code>config.js</code> modules array</td><td><code>MirrorConfig</code> / <code>ModuleConfig</code> (JSON)</td></tr>
+      <tr><td><code>Module.register(...)</code></td><td><code>MirrorModule</code> abstract class</td></tr>
+      <tr><td>module lifecycle (<code>start</code>, …)</td><td><code>start()</code> / <code>refresh()</code> / <code>stop()</code></td></tr>
+      <tr><td>screen regions (top_left, …)</td><td><code>Region</code> enum + <code>MirrorScreen</code> layout</td></tr>
+      <tr><td><code>sendNotification</code> bus</td><td><code>Notification</code> + <code>MirrorEngine.broadcast()</code></td></tr>
+      <tr><td><code>node_helper</code> data fetching</td><td>provider classes (e.g. <code>WeatherProvider</code>)</td></tr>
+      <tr><td>3rd-party modules folder</td><td>external JAR plugins (<code>ModuleFactory</code> SPI)</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>Quick start</h2>
+  <pre><code>git clone https://github.com/pierrejochem/Speculum.git
+cd Speculum
+./gradlew :composeApp:run</code></pre>
+  <p>This builds + deploys every module JAR into <code>plugins/</code>, then launches the fullscreen mirror.
+    Full instructions on the <a href="getting-started.html">Getting Started</a> page.</p>
+
+  <div class="grid cols-3" style="margin-top:2.5rem;">
+    <div class="card"><h3>New here?</h3><p>Install, build, and run your first mirror.</p><a class="more" href="getting-started.html">Getting Started →</a></div>
+    <div class="card"><h3>Building a module?</h3><p>The full plugin contract and types.</p><a class="more" href="api-reference.html">API Reference →</a></div>
+    <div class="card"><h3>Deploying?</h3><p>Config, web admin, and Raspberry Pi kiosk.</p><a class="more" href="user-guide.html">User Guide →</a></div>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="footer-inner">
+    <span>Speculum — modular smart-mirror dashboard. <a href="https://github.com/pierrejochem/Speculum/blob/main/LICENSE.md">MIT-style license</a>.</span>
+    <span class="footer-links">
+      <a href="https://github.com/pierrejochem/Speculum">GitHub</a>
+      <a href="https://github.com/pierrejochem/Speculum/security/advisories/new">Report a vulnerability</a>
+      <a href="architecture.html">Architecture</a>
+    </span>
+  </div>
+</footer>
+</body>
+</html>

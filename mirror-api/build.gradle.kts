@@ -46,7 +46,7 @@ publishing {
                 name.set("Speculum mirror-api")
                 description.set(
                     "Plugin API for the Speculum smart-mirror dashboard (a Compose for " +
-                        "Desktop reimagining of MagicMirror²). Compile against it to build " +
+                        "Desktop application). Compile against it to build " +
                         "external module JARs: extend MirrorModule (Compose UI + start/" +
                         "refresh/stop lifecycle + notification bus), expose a ModuleFactory " +
                         "via ServiceLoader, and place modules on the screen with the Region " +

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API Reference — Speculum</title>
+<meta name="description" content="The Speculum mirror-api: MirrorModule, ModuleConfig, ModuleFactory, Region, Notification, MirrorColors, plus the config-server REST API and consuming the published artifact.">
+<link rel="icon" href="assets/img/speculum-icon.svg">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html"><img src="assets/img/speculum-icon.svg" alt=""> Speculum</a>
+    <button class="menu-toggle" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('open')">☰</button>
+    <nav class="nav-links" id="nav">
+      <a href="index.html">Home</a>
+      <a href="getting-started.html">Getting Started</a>
+      <a href="showcase.html">Showcase</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="api-reference.html" class="active">API Reference</a>
+      <a href="user-guide.html">User Guide</a>
+      <a href="https://github.com/pierrejochem/Speculum" class="gh">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p class="kicker">API Reference</p>
+  <h1><code>mirror-api</code></h1>
+  <p class="lead">The shared contract in <code>:mirror-api</code> that both the app and every plugin compile against. Package <code>org.speculum</code>.</p>
+
+  <div class="toc">
+    <strong>On this page</strong>
+    <ul>
+      <li><a href="#mirrormodule">MirrorModule</a></li>
+      <li><a href="#moduleconfig">ModuleConfig</a></li>
+      <li><a href="#mirrorconfig">MirrorConfig</a></li>
+      <li><a href="#modulefactory">ModuleFactory</a></li>
+      <li><a href="#region">Region</a></li>
+      <li><a href="#notification">Notification</a></li>
+      <li><a href="#mirrorcolors">MirrorColors</a></li>
+      <li><a href="#rest">Config-server REST API</a></li>
+      <li><a href="#dependency">Use as a dependency</a></li>
+    </ul>
+  </div>
+
+  <h2 id="mirrormodule">MirrorModule</h2>
+  <p><code>org.speculum.core.MirrorModule</code> — base class every module extends. Modeled on MagicMirror's <code>Module.register</code>. Lifecycle: <code>start()</code> → (loop <code>refresh()</code>) → <code>Content()</code> rendered → <code>stop()</code>.</p>
+  <pre><code>abstract class MirrorModule(
+    val config: ModuleConfig
+) : NotificationListener {
+
+    val name: String get() = config.module
+    val region: Region get() = config.regionEnum
+    open val refreshIntervalMs: Long get() = config.refreshIntervalMs
+
+    open fun start(scope: CoroutineScope) {}        // once, at boot
+    open suspend fun refresh() {}                   // every refreshIntervalMs
+    open fun stop() {}                              // at shutdown
+    override fun onNotification(notification: Notification) {}  // bus events
+
+    @Composable
+    abstract fun Content()                          // the UI — required
+}</code></pre>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Member</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>start(scope)</code></td><td>Called once. Launch coroutines in <code>scope</code> (auto-cancelled on shutdown) — clocks, animations, one-off setup.</td></tr>
+      <tr><td><code>refresh()</code></td><td>Engine calls it on a loop every <code>refreshIntervalMs</code> (first call immediate). Put data fetching here. Return <code>0</code> from <code>refreshIntervalMs</code> to skip the loop.</td></tr>
+      <tr><td><code>stop()</code></td><td>Release resources.</td></tr>
+      <tr><td><code>onNotification(n)</code></td><td>Receive bus events (e.g. <code>"ALL_MODULES_STARTED"</code>).</td></tr>
+      <tr><td><code>Content()</code></td><td><strong>Required.</strong> The composable UI. Hold state in <code>mutableStateOf(...)</code>; assigning recomposes.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="muted">Only <code>Content()</code> is required; override the rest as needed.</p>
+
+  <h2 id="moduleconfig">ModuleConfig</h2>
+  <p><code>org.speculum.config.ModuleConfig</code> — one entry in the modules array, equivalent to one object in MagicMirror's <code>config.js</code>. <code>config</code> is a free-form string map so each module reads its own options.</p>
+  <pre><code>@Serializable
+data class ModuleConfig(
+    val module: String,
+    val position: String = "top_left",
+    @SerialName("refreshInterval") val refreshIntervalMs: Long = 60_000,
+    val config: Map&lt;String, String&gt; = emptyMap()
+) {
+    val regionEnum: Region
+        get() = runCatching { Region.valueOf(position.uppercase()) }
+            .getOrDefault(Region.TOP_LEFT)
+
+    fun string(key: String, default: String = ""): String
+    fun int(key: String, default: Int = 0): Int
+    fun bool(key: String, default: Boolean = false): Boolean
+}</code></pre>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Getter</th><th>Behavior</th></tr></thead>
+    <tbody>
+      <tr><td><code>string(key, default)</code></td><td>Raw map value or <code>default</code>.</td></tr>
+      <tr><td><code>int(key, default)</code></td><td><code>toIntOrNull()</code> or <code>default</code>.</td></tr>
+      <tr><td><code>bool(key, default)</code></td><td><code>toBooleanStrictOrNull()</code> or <code>default</code>.</td></tr>
+      <tr><td><code>refreshIntervalMs</code></td><td>The entry's <code>refreshInterval</code> (JSON key), in <strong>milliseconds</strong>.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="mirrorconfig">MirrorConfig</h2>
+  <p>Top-level config, equivalent to MagicMirror's <code>config.js</code>.</p>
+  <pre><code>@Serializable
+data class MirrorConfig(
+    val language: String = "en",
+    val timeFormat: Int = 24,
+    val units: String = "metric",
+    val modules: List&lt;ModuleConfig&gt; = emptyList()
+)</code></pre>
+
+  <h2 id="modulefactory">ModuleFactory</h2>
+  <p><code>org.speculum.core.ModuleFactory</code> — the SPI for pluggable JAR modules. Implement it and declare the FQN in <code>META-INF/services/org.speculum.core.ModuleFactory</code>.</p>
+  <pre><code>interface ModuleFactory {
+    val name: String                                 // config `module` name
+    fun create(config: ModuleConfig): MirrorModule   // build an instance
+    fun defaultConfig(): ModuleConfig? = null         // auto-added placement
+    val order: Int get() = 0                          // stacking within a region
+}</code></pre>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Member</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>name</code></td><td>The config <code>module</code> name this factory handles (e.g. <code>"example"</code>).</td></tr>
+      <tr><td><code>create(config)</code></td><td>Build a module instance for the given config entry.</td></tr>
+      <tr><td><code>defaultConfig()</code></td><td>Optional default placement, auto-added when no entry already names this module. Return <code>null</code> to require an explicit entry.</td></tr>
+      <tr><td><code>order</code></td><td>Stacking order within a region (lower = higher/earlier). Keeps layout deterministic when JARs load in unspecified order.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <pre><code>class FooModuleFactory : ModuleFactory {
+    override val name = "foo"
+    override fun create(config: ModuleConfig) = FooModule(config)
+    override fun defaultConfig() = ModuleConfig("foo", "top_center", 3000, mapOf("k" to "v"))
+}</code></pre>
+
+  <h2 id="region">Region</h2>
+  <p><code>org.speculum.core.Region</code> — screen regions; the layout engine places each module in the matching region of the fullscreen dashboard.</p>
+  <pre><code>enum class Region {
+    TOP_LEFT, TOP_CENTER, TOP_RIGHT,
+    UPPER_THIRD, MIDDLE_CENTER, LOWER_THIRD,
+    BOTTOM_LEFT, BOTTOM_CENTER, BOTTOM_RIGHT,
+    BOTTOM_BAR, FULLSCREEN_ABOVE, FULLSCREEN_BELOW
+}</code></pre>
+
+  <h2 id="notification">Notification &amp; NotificationListener</h2>
+  <p><code>org.speculum.core</code> — inter-module messaging, equivalent to MagicMirror's <code>sendNotification</code> / <code>notificationReceived</code> bus.</p>
+  <pre><code>data class Notification(
+    val name: String,
+    val payload: Any? = null,
+    val sender: String? = null
+)
+
+interface NotificationListener {
+    fun onNotification(notification: Notification)
+}</code></pre>
+  <p>The engine broadcasts events (e.g. <code>ALL_MODULES_STARTED</code>). Broadcasting <em>from</em> a module needs an engine reference — today the engine is the broadcaster.</p>
+
+  <h2 id="mirrorcolors">MirrorColors</h2>
+  <p><code>org.speculum.ui.MirrorColors</code> — the three brightness levels on black.</p>
+  <pre><code>object MirrorColors {
+    val Bright = Color(0xFFFFFFFF)   // headlines, values
+    val Normal = Color(0xFF999999)   // labels
+    val Dimmed = Color(0xFF666666)   // secondary / headers
+}</code></pre>
+  <div class="warn"><strong>Icons must be pure-white vectors.</strong> A two-way mirror shows only bright pixels, and Compose Desktop falls back to a color-emoji font for many glyphs — so draw icons with <code>Canvas</code> rather than emoji. Plain geometric text glyphs (<code>•</code> <code>↑</code> <code>≈</code>) render monochrome and are fine.</div>
+
+  <h2 id="rest">Config-server REST API</h2>
+  <p>Auth is <code>Authorization: Bearer &lt;token&gt;</code> (HMAC-signed, 12 h TTL) obtained from <code>/api/login</code>.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Method</th><th>Path</th><th>Auth</th><th>Body / Result</th></tr></thead>
+    <tbody>
+      <tr><td>POST</td><td><code>/api/login</code></td><td><span class="pill">none</span></td><td><code>{password}</code> → <code>{token}</code> (12 h)</td></tr>
+      <tr><td>POST</td><td><code>/api/password</code></td><td><span class="pill auth">bearer</span></td><td><code>{currentPassword, newPassword}</code> → <code>{message}</code></td></tr>
+      <tr><td>GET</td><td><code>/api/modules</code></td><td><span class="pill auth">bearer</span></td><td>discovered modules + default configs</td></tr>
+      <tr><td>GET</td><td><code>/api/config</code></td><td><span class="pill auth">bearer</span></td><td>effective <code>MirrorConfig</code></td></tr>
+      <tr><td>PUT</td><td><code>/api/config</code></td><td><span class="pill auth">bearer</span></td><td>save <code>MirrorConfig</code> → writes <code>config.json</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="muted"><code>POST /api/password</code> → <code>401</code> if <code>currentPassword</code> wrong, <code>400</code> if <code>newPassword</code> &lt; 4 chars. Changing the password does not revoke existing tokens — they expire on their own TTL.</p>
+
+  <h2 id="dependency">Use <code>mirror-api</code> as a dependency</h2>
+  <p>For a module developed in its own repo, depend on the published API instead of <code>project(":mirror-api")</code>. It's released to <strong>GitHub Packages</strong> as <code>org.speculum:mirror-api</code> on every <code>v*</code> tag (version = tag without the <code>v</code>; latest published <strong>0.0.1</strong>). The package is public, but GitHub's Maven registry still requires a token with <code>read:packages</code>.</p>
+  <pre><code>repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/pierrejochem/Speculum")
+        credentials {
+            username = providers.gradleProperty("gpr.user").orNull ?: System.getenv("GITHUB_ACTOR")
+            password = providers.gradleProperty("gpr.token").orNull ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
+}
+dependencies { compileOnly("org.speculum:mirror-api:0.0.1") }</code></pre>
+  <p>Put <code>gpr.user</code> / <code>gpr.token</code> in <code>~/.gradle/gradle.properties</code>, or export <code>GITHUB_ACTOR</code> / <code>GITHUB_TOKEN</code>.</p>
+
+  <div class="btn-row" style="justify-content:flex-start;">
+    <a class="btn primary" href="https://github.com/pierrejochem/Speculum/blob/main/DEVELOPER_GUIDE.md">Full Developer Guide ↗</a>
+    <a class="btn" href="user-guide.html">User Guide →</a>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="footer-inner">
+    <span>Speculum — modular smart-mirror dashboard.</span>
+    <span class="footer-links">
+      <a href="https://github.com/pierrejochem/Speculum">GitHub</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="getting-started.html">Getting Started</a>
+    </span>
+  </div>
+</footer>
+</body>
+</html>

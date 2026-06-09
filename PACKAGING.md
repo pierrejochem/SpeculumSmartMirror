@@ -233,6 +233,10 @@ Already applied in `nativeDistributions.jvmArgs`: `-Xmx160m -XX:+UseSerialGC
   Skiko use hardware GL instead of software.
 - Prefer a **Pi 4 (2–4 GB)**; the 3B works but is marginal.
 
+## Emulating Raspbian Bullseye with QEMU (arm64, raspi3b) on Ubuntu
+
+https://github.com/KhalilOuali/Raspbian-Bullseye-with-QEMU
+
 ## Troubleshooting
 
 **`Value '…/corretto-21…/Home' given for org.gradle.java.home … is invalid`**
