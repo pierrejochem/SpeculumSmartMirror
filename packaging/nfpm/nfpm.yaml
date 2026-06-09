@@ -8,9 +8,9 @@
 #
 # Build (from the repo root, after createDistributable + the web build):
 #   PKG_VERSION=1.2.3 PKG_ARCH=arm64 \
-#     nfpm pkg --config packaging/nfpm/nfpm.yaml --packager deb --target dist/
+#     nfpm pkg --config packaging/nfpm/nfpm.yaml --packager deb --target dist/speculum.deb
 #   PKG_VERSION=1.2.3 PKG_ARCH=arm64 \
-#     nfpm pkg --config packaging/nfpm/nfpm.yaml --packager rpm --target dist/
+#     nfpm pkg --config packaging/nfpm/nfpm.yaml --packager rpm --target dist/speculum.rpm
 #
 # PKG_ARCH is the Debian arch (arm64 / amd64); nfpm maps it to the rpm arch
 # (aarch64 / x86_64) automatically. Paths are relative to the repo root.

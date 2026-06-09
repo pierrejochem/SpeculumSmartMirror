@@ -67,8 +67,9 @@ jobs:
           PKG_VERSION: ${{ github.ref_name }}
         run: |
           export PKG_VERSION="${PKG_VERSION#v}"   # strip leading "v" from the tag
-          nfpm pkg --config packaging/nfpm/nfpm.yaml --packager deb --target dist/
-          nfpm pkg --config packaging/nfpm/nfpm.yaml --packager rpm --target dist/
+          mkdir -p dist
+          nfpm pkg --config packaging/nfpm/nfpm.yaml --packager deb --target "dist/speculum_${PKG_VERSION}_${PKG_ARCH}.deb"
+          nfpm pkg --config packaging/nfpm/nfpm.yaml --packager rpm --target "dist/speculum_${PKG_VERSION}_${PKG_ARCH}.rpm"
 
       - name: Upload to workflow artifacts
         uses: actions/upload-artifact@v7
