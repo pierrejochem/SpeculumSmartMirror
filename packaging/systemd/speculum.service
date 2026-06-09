@@ -19,11 +19,15 @@ Wants=network-online.target
 [Service]
 # The account that owns seat0 / the display. Change to your user (e.g. "pi").
 User=pi
-# Open a PAM login session so pam_systemd creates /run/user/<uid> and exports
+# Open a PAM session so pam_systemd creates /run/user/<uid> and exports
 # XDG_RUNTIME_DIR — cage needs it for the Wayland socket. Without this a system
 # unit has no user session and cage aborts:
 #   [ERROR] [../cage.c:280] XDG_RUNTIME_DIR is not set in the environment
-PAMName=login
+# Uses our own minimal stack (/etc/pam.d/speculum) rather than "login" so we
+# don't drag in pam_lastlog/pam_motd — pam_lastlog is gone on newer distros and
+# logs "adding faulty module". deb/rpm/Arch install the file; for the manual
+# copy above, also: sudo cp packaging/pam/speculum /etc/pam.d/speculum
+PAMName=speculum
 # cage launches a minimal Wayland session and runs Speculum fullscreen in it.
 ExecStart=/usr/bin/cage -s -- /opt/speculum/bin/speculum
 Restart=on-failure

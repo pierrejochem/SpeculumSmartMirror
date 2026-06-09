@@ -63,6 +63,12 @@ contents:
   - src: packaging/systemd/speculum.service
     dst: /usr/lib/systemd/system/speculum.service
 
+  # Minimal PAM stack the unit's PAMName=speculum references; just enough for
+  # pam_systemd to set up XDG_RUNTIME_DIR (cage needs it).
+  - src: packaging/pam/speculum
+    dst: /etc/pam.d/speculum
+    type: config|noreplace
+
   - src: packaging/arch/speculum.desktop
     dst: /usr/share/applications/speculum.desktop
 
