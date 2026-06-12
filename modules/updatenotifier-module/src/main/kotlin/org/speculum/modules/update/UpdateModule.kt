@@ -76,7 +76,7 @@ class UpdateModule(config: ModuleConfig) : MirrorModule(config) {
             // A newer release is available.
             u != null -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("⬆︎", color = ACCENT, fontSize = 18.sp) // ⬆ (text glyph)
+                    Text("⇈", color = ACCENT, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
                     Spacer(Modifier.width(8.dp))
                     Text(
                         "Update available",

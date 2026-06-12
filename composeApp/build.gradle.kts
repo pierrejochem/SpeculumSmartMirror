@@ -38,7 +38,7 @@ dependencies {
 
 // Single source of the app version: the package version, and (via a system
 // property) what the update-notifier module compares against the latest release.
-val appVersion = "1.0.0"
+val appVersion = "0.3.5"
 
 // Module JARs are bundled into the package here; at runtime the app finds them
 // via `compose.application.resources.dir` (see PluginLoader).
