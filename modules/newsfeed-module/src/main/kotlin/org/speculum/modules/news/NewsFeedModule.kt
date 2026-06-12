@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -72,7 +73,7 @@ class NewsFeedModule(config: ModuleConfig) : MirrorModule(config) {
 
     @Composable
     override fun Content() {
-        Column {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             val item = items.getOrNull(index)
             if (item == null) {
                 Text("Loading…", color = DIM, fontSize = 18.sp)
@@ -81,9 +82,9 @@ class NewsFeedModule(config: ModuleConfig) : MirrorModule(config) {
                     val age = if (showPublishDate) relativeTime(item.pubDate) else ""
                     val header = listOf(item.sourceTitle, age).filter { it.isNotBlank() }
                         .joinToString(", ")
-                    if (header.isNotBlank()) Text(header, color = DIM, fontSize = 14.sp)
+                    if (header.isNotBlank()) Text(header, color = DIM, fontSize = 16.sp)
                 }
-                Text(item.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Light)
+                Text(item.title, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Light)
             }
         }
     }

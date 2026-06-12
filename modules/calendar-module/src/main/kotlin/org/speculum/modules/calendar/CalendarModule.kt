@@ -70,7 +70,7 @@ class CalendarModule(config: ModuleConfig) : MirrorModule(config) {
 
     @Composable
     override fun Content() {
-        Column(Modifier.width(340.dp)) {
+        Column(Modifier.width(300.dp)) {
             if (header.isNotBlank()) Text(
                 header.uppercase(), color = FAINT, fontSize = 14.sp,
                 letterSpacing = 2.sp, modifier = Modifier.padding(bottom = 4.dp)

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -49,7 +50,7 @@ class QrModule(config: ModuleConfig) : MirrorModule(config) {
     @Composable
     override fun Content() {
         val m = matrix ?: return
-        Column {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Canvas(Modifier.size(sizeDp)) {
                 val n = m.width
                 val cell = size.width / n
