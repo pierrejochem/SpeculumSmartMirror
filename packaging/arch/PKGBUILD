@@ -13,7 +13,7 @@ pkgver=0.0.1
 pkgrel=1
 pkgdesc="Modular smart-mirror dashboard — Compose for Desktop app"
 arch=('aarch64' 'x86_64')
-url="https://github.com/pierrejochem/Speculum"
+url="https://github.com/pierrejochem/SpeculumSmartMirror"
 license=('MIT')
 # Runtime X/render libs Skiko needs (the JRE itself is bundled in the app-image).
 depends=('fontconfig' 'freetype2' 'libx11' 'libxext' 'libxrender' 'libxtst' 'libxi')
@@ -25,7 +25,7 @@ source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
 sha256sums=('SKIP'
             'SKIP')
 
-_src="Speculum-$pkgver"
+_src="SpeculumSmartMirror-$pkgver"
 
 build() {
   cd "$srcdir/$_src"
