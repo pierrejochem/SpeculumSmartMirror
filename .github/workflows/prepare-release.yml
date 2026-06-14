@@ -1,0 +1,92 @@
+name: Prepare release
+
+# Manual entry point for cutting a release. Computes the next version from the
+# Conventional Commits since the last tag (or a forced bump), tags it, and hands
+# off to `release.yml` to build and publish artifacts.
+#
+#   auto  → git-cliff decides: feat ⇒ minor, fix ⇒ patch, breaking ⇒ major
+#   patch / minor / major → force that bump regardless of the commits
+#
+# Run "Dry run" first to preview the version and notes without tagging.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump"
+        type: choice
+        options: [auto, patch, minor, major]
+        default: auto
+      dry_run:
+        description: "Preview only — do not tag or release"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # push the tag
+  actions: write    # dispatch release.yml
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # full history + tags for version calc and notes
+
+      - name: Compute next version
+        id: ver
+        run: |
+          latest="$(git tag --sort=-v:refname | grep -E '^v[0-9]' | head -1 || true)"
+          latest="${latest:-v0.0.0}"
+
+          if [ "${{ inputs.bump }}" = "auto" ]; then
+            next="$(npx -y git-cliff@latest --config cliff.toml --bumped-version)"
+          else
+            IFS=. read -r ma mi pa <<<"${latest#v}"
+            case "${{ inputs.bump }}" in
+              major) ma=$((ma + 1)); mi=0; pa=0 ;;
+              minor) mi=$((mi + 1)); pa=0 ;;
+              patch) pa=$((pa + 1)) ;;
+            esac
+            next="v${ma}.${mi}.${pa}"
+          fi
+          next="v${next#v}"  # normalise: always exactly one leading "v"
+
+          if git rev-parse -q --verify "refs/tags/$next" >/dev/null; then
+            echo "::error::Tag $next already exists — nothing to release (no new commits?)."
+            exit 1
+          fi
+
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+          echo "### Release \`$next\` (was \`$latest\`)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Preview release notes
+        run: |
+          {
+            echo '<details><summary>Release notes</summary>'
+            echo
+            npx -y git-cliff@latest --config cliff.toml \
+              --unreleased --tag "${{ steps.ver.outputs.next }}" --strip all
+            echo
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Tag and dispatch the build
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT: ${{ steps.ver.outputs.next }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$NEXT" -m "Release $NEXT"
+          git push origin "$NEXT"
+          # A GITHUB_TOKEN tag push does not trigger release.yml's `push` event,
+          # so kick its workflow_dispatch explicitly (dispatch IS allowed).
+          gh workflow run release.yml -f tag="$NEXT"
+          echo "Tagged $NEXT and dispatched release.yml." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dry run notice
+        if: ${{ inputs.dry_run }}
+        run: echo "Dry run — no tag pushed, no release built." >> "$GITHUB_STEP_SUMMARY"
