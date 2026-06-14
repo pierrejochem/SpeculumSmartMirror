@@ -1,28 +1,28 @@
 package org.speculum.modules.news
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.time.Clock
-import kotlinx.datetime.DateTimeUnit
-import kotlin.time.Instant
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
-import kotlinx.datetime.toInstant
-import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.datetime.*
 import org.speculum.config.ModuleConfig
 import org.speculum.core.MirrorModule
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Instant
 
 /**
  * Port of MagicMirror's `newsfeed` module: fetches RSS/Atom feeds, rotates
@@ -84,7 +84,21 @@ class NewsFeedModule(config: ModuleConfig) : MirrorModule(config) {
                         .joinToString(", ")
                     if (header.isNotBlank()) Text(header, color = DIM, fontSize = 16.sp)
                 }
-                Text(item.title, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Light)
+                Box(
+                    //modifier = Modifier.fillMaxSize(), // Fives available desktop space
+                    contentAlignment = Alignment.Center // Centers the Box content itself
+                ) {
+                    Text(
+                        item.title,
+                        color = Color.White,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Light,
+                        maxLines = 2,
+                        minLines = 2,
+                        textAlign = TextAlign.Center, // Centers multiline text within Text bounds
+                        modifier = Modifier.wrapContentSize(Alignment.Center)
+                    )
+                }
             }
         }
     }
