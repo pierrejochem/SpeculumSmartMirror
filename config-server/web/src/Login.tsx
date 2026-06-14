@@ -34,7 +34,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           autoFocus
           onChange={(e) => setPassword(e.target.value)}
         />
-        {error && <div className="error">{error}</div>}
+        {error && <div className="error" role="alert">{error}</div>}
         <button disabled={busy || !password}>{busy ? "…" : "Sign in"}</button>
       </form>
     </div>

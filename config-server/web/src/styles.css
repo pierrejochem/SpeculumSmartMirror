@@ -163,7 +163,7 @@ header {
   gap: 14px;
   margin-bottom: 26px;
 }
-header .spacer { flex: 1; }
+.spacer { flex: 1; }
 
 footer {
   position: sticky;
@@ -185,6 +185,19 @@ footer {
   align-items: center;
   gap: 14px;
   margin-bottom: 16px;
+}
+
+/* Unsaved-changes pill in the sticky footer — the diamond echoes section heads. */
+.foot-status { display: inline-flex; align-items: center; }
+.pending { display: inline-flex; align-items: center; gap: 8px; }
+.pending::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  rotate: 45deg;
+  background: var(--grad);
+  border-radius: 1px;
+  flex: none;
 }
 .card > h2 { margin-bottom: 16px; }
 
@@ -381,7 +394,9 @@ input, select, textarea { max-width: 100%; min-width: 0; }
 
   /* Sticky footer + header wrap rather than overflow. */
   header { flex-wrap: wrap; gap: 10px; }
-  footer { flex-wrap: wrap; gap: 10px; padding: 12px; }
+  footer { flex-wrap: wrap; gap: 10px 14px; padding: 12px; }
+  /* A flex spacer would force a blank wrapped row — drop it when stacked. */
+  footer .spacer { display: none; }
   .card-head { flex-wrap: wrap; }
 
   /* 16px text fields stop iOS Safari from auto-zooming on focus. */

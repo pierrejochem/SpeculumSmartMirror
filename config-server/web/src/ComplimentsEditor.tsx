@@ -113,7 +113,7 @@ export function ComplimentsEditor({
           <div className="compl-date" key={i}>
             <input className="k" value={key} onChange={(e) => renameDateKey(key, e.target.value)} />
             <LineBox lines={pools[key] ?? []} rows={2} onLines={(l) => setLines(key, l)} />
-            <button className="ghost danger" onClick={() => removeDateKey(key)}>×</button>
+            <button className="ghost danger" aria-label="Remove date entry" title="Remove date entry" onClick={() => removeDateKey(key)}>×</button>
           </div>
         ))}
       </div>

@@ -55,7 +55,7 @@ export function SecurityCard() {
               value={confirm} onChange={(e) => setConfirm(e.target.value)} />
           </label>
         </div>
-        <div className="pw-foot">
+        <div className="pw-foot" aria-live="polite">
           <button disabled={!canSubmit}>{busy ? "…" : "Change password"}</button>
           {tooShort && <span className="muted small">Minimum {MIN_LEN} characters.</span>}
           {mismatch && <span className="error small">Passwords don’t match.</span>}

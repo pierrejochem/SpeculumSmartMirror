@@ -10,6 +10,8 @@ export function ConfigEditor({ onLogout }: { onLogout: () => void }) {
   const [ips, setIps] = useState<string[]>([]);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     Promise.all([api.getConfig(), api.getModules(), api.getIps()])
@@ -21,10 +23,25 @@ export function ConfigEditor({ onLogout }: { onLogout: () => void }) {
       .catch((e) => (e.message === "Unauthorized" ? onLogout() : setError(e.message)));
   }, []);
 
-  if (error) return <div className="center error">{error}</div>;
+  // Warn before the tab is closed/reloaded with unsaved edits.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  if (error && !config) return <div className="center error">{error}</div>;
   if (!config) return <div className="center muted">Loading…</div>;
 
-  const update = (patch: Partial<MirrorConfig>) => setConfig({ ...config, ...patch });
+  const update = (patch: Partial<MirrorConfig>) => {
+    setConfig({ ...config, ...patch });
+    setDirty(true);
+    if (status) setStatus(""); // a stale "Saved" no longer reflects the form
+  };
   const updateModule = (i: number, m: ModuleConfig) =>
     update({ modules: config.modules.map((x, j) => (j === i ? m : x)) });
   const removeModule = (i: number) =>
@@ -37,14 +54,18 @@ export function ConfigEditor({ onLogout }: { onLogout: () => void }) {
   }
 
   async function save() {
+    setSaving(true);
     setStatus("Saving…");
     setError("");
     try {
       const res = await api.saveConfig(config!);
       setStatus(res.message);
+      setDirty(false);
     } catch (e: any) {
       setError(e.message);
       setStatus("");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -59,7 +80,15 @@ export function ConfigEditor({ onLogout }: { onLogout: () => void }) {
           <span className="tag">config</span>
         </div>
         <span className="spacer" />
-        <button className="ghost" onClick={onLogout}>Sign out</button>
+        <button
+          className="ghost"
+          onClick={() => {
+            if (dirty && !confirm("You have unsaved changes. Sign out anyway?")) return;
+            onLogout();
+          }}
+        >
+          Sign out
+        </button>
       </header>
 
       <section className="card">
@@ -109,9 +138,19 @@ export function ConfigEditor({ onLogout }: { onLogout: () => void }) {
       <SecurityCard />
 
       <footer>
-        <button onClick={save}>Save</button>
-        {status && <span className="ok">{status}</span>}
-        {error && <span className="error">{error}</span>}
+        <button onClick={save} disabled={saving || !dirty}>
+          {saving ? "Saving…" : "Save"}
+        </button>
+        <span className="foot-status" aria-live="polite">
+          {error ? (
+            <span className="error">{error}</span>
+          ) : status ? (
+            <span className="ok">{status}</span>
+          ) : dirty ? (
+            <span className="pending muted small">Unsaved changes</span>
+          ) : null}
+        </span>
+        <span className="spacer" />
         <span className="muted small">The mirror reloads automatically on save.</span>
       </footer>
     </div>
@@ -155,7 +194,7 @@ function ModuleCard({
           </select>
         </label>
         <label>Refresh (ms)
-          <input type="number" value={mod.refreshInterval}
+          <input type="number" min={0} step={1000} value={mod.refreshInterval}
             onChange={(e) => onChange({ ...mod, refreshInterval: Number(e.target.value) })} />
         </label>
         <button className="ghost danger" onClick={onRemove}>Remove</button>
@@ -175,7 +214,7 @@ function ModuleCard({
                 onChange={(e) => setConfigKey(k, e.target.value, v)} />
               <input className="v" placeholder="value" value={v}
                 onChange={(e) => setConfigKey(k, k, e.target.value)} />
-              <button className="ghost danger" onClick={() => removeKey(k)}>×</button>
+              <button className="ghost danger" aria-label="Remove option" title="Remove option" onClick={() => removeKey(k)}>×</button>
             </div>
           )
         )}
