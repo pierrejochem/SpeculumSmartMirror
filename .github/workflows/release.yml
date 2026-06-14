@@ -85,7 +85,27 @@ jobs:
           files: |
             dist/*.deb
             dist/*.rpm
-          generate_release_notes: true
+
+  # Release notes from Conventional Commits (git-cliff, see cliff.toml). Sets the
+  # Release body; the package jobs only attach files, so they never overwrite it.
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # full history + tags for the changelog
+
+      - name: Generate release notes for this tag
+        id: cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --current --strip all  # just this tag's section, no header/footer
+
+      - name: Set the Release body
+        uses: softprops/action-gh-release@v3
+        with:
+          body_path: ${{ steps.cliff.outputs.changelog }}
 
   # Arch package for both arches (the PKGBUILD installs the app-image).
   arch:
