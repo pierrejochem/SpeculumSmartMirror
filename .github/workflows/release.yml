@@ -16,18 +16,25 @@ on:
 permissions:
   contents: write
 
-# Resolved once: the dispatch input when run manually, else the pushed tag.
-# Every job builds and publishes this version.
-env:
-  VERSION: ${{ inputs.tag || github.ref_name }}
-
 jobs:
+  # Resolve the version once: the dispatch input when run manually, else the
+  # pushed tag. Done in a step (not workflow-level env, which can't read the
+  # `inputs` context) and shared via outputs so every job builds the same tag.
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      v: ${{ steps.resolve.outputs.v }}
+    steps:
+      - id: resolve
+        run: echo "v=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
   # .deb + .rpm for both arches. Build the Compose app-image with jpackage
   # (`createDistributable`) — which can't cross-compile, so each arch runs on its
   # own native runner (free for public repos, no QEMU) — then wrap it with nfpm.
   # nfpm (not jpackage's installer) gives the /usr/bin symlink, the systemd unit
   # at /usr/lib/systemd, and the postinstall/postremove scripts.
   linux-deb-rpm:
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -38,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ env.VERSION }}
+          ref: ${{ needs.version.outputs.v }}
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -80,7 +87,7 @@ jobs:
       - name: Package .deb + .rpm (${{ matrix.arch }})
         env:
           PKG_ARCH: ${{ matrix.arch }}
-          PKG_VERSION: ${{ env.VERSION }}
+          PKG_VERSION: ${{ needs.version.outputs.v }}
         run: |
           export PKG_VERSION="${PKG_VERSION#v}"   # strip leading "v" from the tag
           mkdir -p dist
@@ -98,7 +105,7 @@ jobs:
       - name: Attach to GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ env.VERSION }}
+          tag_name: ${{ needs.version.outputs.v }}
           files: |
             dist/*.deb
             dist/*.rpm
@@ -106,11 +113,12 @@ jobs:
   # Release notes from Conventional Commits (git-cliff, see cliff.toml). Sets the
   # Release body; the package jobs only attach files, so they never overwrite it.
   changelog:
+    needs: version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ env.VERSION }}
+          ref: ${{ needs.version.outputs.v }}
           fetch-depth: 0  # full history + tags for the changelog
 
       - name: Generate release notes for this tag
@@ -123,11 +131,12 @@ jobs:
       - name: Set the Release body
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ env.VERSION }}
+          tag_name: ${{ needs.version.outputs.v }}
           body_path: ${{ steps.cliff.outputs.changelog }}
 
   # Arch package for both arches (the PKGBUILD installs the app-image).
   arch:
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -138,16 +147,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ env.VERSION }}
+          ref: ${{ needs.version.outputs.v }}
 
       # makepkg must run as a non-root user. pkgver is pinned to the released
       # version so the PKGBUILD's source tarball matches.
+      # Use a custom var, NOT the built-in GITHUB_REF_NAME: a step-level env can't
+      # override that reserved name, so on workflow_dispatch it stays the branch
+      # ("main") and pkgver would become "main".
       - name: Build Arch package (${{ matrix.arch }})
         env:
-          GITHUB_REF_NAME: ${{ env.VERSION }}
+          RELEASE_VERSION: ${{ needs.version.outputs.v }}
         run: |
           docker run --rm -v "$PWD":/src -w /src \
-            -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
+            -e RELEASE_VERSION="${RELEASE_VERSION}" \
             ${{ matrix.image }} bash -c '
               set -e
               # systemd-detect-virt is flaky in containers; stub it so pacman
@@ -160,7 +172,7 @@ jobs:
               useradd -m builder
               printf "builder ALL=(ALL) NOPASSWD: ALL\n" > /etc/sudoers.d/builder
               chown -R builder /src
-              sed -i "s/^pkgver=.*/pkgver=${GITHUB_REF_NAME#v}/" packaging/arch/PKGBUILD
+              sed -i "s/^pkgver=.*/pkgver=${RELEASE_VERSION#v}/" packaging/arch/PKGBUILD
               cd packaging/arch
               # -s installs the PKGBUILD depends/makedepends via pacman (builder
               # has passwordless sudo), so runtime libs resolve during the build.
@@ -177,10 +189,11 @@ jobs:
       - name: Attach to GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ env.VERSION }}
+          tag_name: ${{ needs.version.outputs.v }}
           files: packaging/arch/*.pkg.tar.*
 
   publish-mirror-api:
+    needs: version
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -188,7 +201,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ env.VERSION }}
+          ref: ${{ needs.version.outputs.v }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -204,14 +217,14 @@ jobs:
       - name: Publish mirror-api to GitHub Packages
         run: ./gradlew :mirror-api:publish -PreleaseVersion="${VERSION}" --no-daemon --stacktrace
         env:
-          VERSION: ${{ env.VERSION }}
+          VERSION: ${{ needs.version.outputs.v }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
 
   # SHA256SUMS over every package, plus detached GPG signatures when a signing
   # key is configured. Runs after the package jobs so all artifacts exist.
   checksums:
-    needs: [linux-deb-rpm, arch]
+    needs: [version, linux-deb-rpm, arch]
     runs-on: ubuntu-latest
     env:
       GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
@@ -244,7 +257,7 @@ jobs:
       - name: Attach checksums + signatures to the Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ env.VERSION }}
+          tag_name: ${{ needs.version.outputs.v }}
           files: |
             out/SHA256SUMS
             out/*.asc
