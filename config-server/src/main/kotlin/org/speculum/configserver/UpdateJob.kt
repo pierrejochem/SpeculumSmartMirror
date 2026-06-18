@@ -16,6 +16,7 @@ import org.speculum.update.VerifyResult
 import org.speculum.update.selectAssetByName
 import org.speculum.update.selectPackageAsset
 import java.io.File
+import kotlin.system.exitProcess
 
 /** Polled snapshot for `GET /api/update/progress`. */
 @Serializable
@@ -132,8 +133,27 @@ object UpdateJob {
                         val msg = Regex("\"message\"\\s*:\\s*\"([^\"]*)\"").find(body)?.groupValues?.get(1)
                         return fail(msg?.takeIf { it.isNotBlank() } ?: "Update failed during install.")
                     }
-                    phase = Phase.INSTALLED
-                    message = "Update installed — relaunch Speculum to apply."
+                    // The system speculum.service wasn't active, so the helper
+                    // didn't restart anything. Replace the running mirror ourselves:
+                    //  1) a --user systemd unit  -> restart that unit;
+                    //  2) a bare / session launch -> relaunch the new binary,
+                    //     which inherits this session's display env, then exit.
+                    val unit = detectOwnUserUnit()
+                    val launcher = System.getProperty("jpackage.app-path")
+                    when {
+                        unit != null && restartUserUnit(unit) -> {
+                            phase = Phase.RESTARTING; message = "Restarting…"
+                        }
+                        launcher != null && relaunchAfterExit(launcher) -> {
+                            phase = Phase.RESTARTING; message = "Restarting…"
+                            delay(600) // let the UI observe RESTARTING before we die
+                            exitProcess(0) // the detached relauncher starts the new version
+                        }
+                        else -> {
+                            phase = Phase.INSTALLED
+                            message = "Update installed — relaunch Speculum to apply."
+                        }
+                    }
                     return
                 }
                 delay(500)
@@ -144,12 +164,48 @@ object UpdateJob {
         }
     }
 
-    /** Triggers the root oneshot unit (authorized for user `pi` via polkit). */
+    /** Triggers the root oneshot unit (authorized from a local session via polkit). */
     private fun trigger(): Boolean = runCatching {
         ProcessBuilder("systemctl", "--no-block", "start", "speculum-update.service")
             .redirectErrorStream(true)
             .start()
             .waitFor() == 0
+    }.getOrDefault(false)
+
+    /**
+     * The systemd unit this process runs under, if any, from the cgroup path
+     * (e.g. `…/user@1000.service/app.slice/speculum.service` → "speculum.service").
+     * Used to self-restart when the mirror runs as a `--user` service rather than
+     * the system speculum.service. Null when not run under a unit (bare launch).
+     */
+    private fun detectOwnUserUnit(): String? = runCatching {
+        File("/proc/self/cgroup").readLines()
+            .asSequence()
+            .flatMap { it.substringAfterLast(':').split('/').asSequence() }
+            .lastOrNull { it.endsWith(".service") && !it.startsWith("user@") }
+    }.getOrNull()
+
+    /** Restarts our own `--user` unit (we're in that session, so no root needed). */
+    private fun restartUserUnit(unit: String): Boolean = runCatching {
+        ProcessBuilder("systemctl", "--user", "--no-block", "restart", unit)
+            .redirectErrorStream(true)
+            .start()
+            .waitFor() == 0
+    }.getOrDefault(false)
+
+    /**
+     * Spawns the new mirror binary detached, then we exit. `setsid` frees it from
+     * our process/session so it survives our exit; the brief `sleep` lets the old
+     * process fully exit and free the admin port before the new one binds it. The
+     * child inherits this session's DISPLAY/WAYLAND/XDG_RUNTIME_DIR env, so it
+     * renders where the old one did.
+     */
+    private fun relaunchAfterExit(launcher: String): Boolean = runCatching {
+        ProcessBuilder("setsid", "sh", "-c", "sleep 2; exec \"$launcher\"")
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
+            .start()
+        true
     }.getOrDefault(false)
 
     private fun fail(reason: String) {
