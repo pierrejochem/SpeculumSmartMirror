@@ -66,6 +66,7 @@ object UpdateJob {
 
     private suspend fun run() {
         val http = GitHubReleaseProvider.defaultClient()
+        val dlHttp = Downloader.downloadClient()
         try {
             val release = GitHubReleaseProvider(UpdateService.repo(), http).latest()
                 ?: return fail("Couldn't reach GitHub.")
@@ -92,7 +93,7 @@ object UpdateJob {
             val sigFile = File(staging, "SHA256SUMS.asc")
             File(staging, "result.json").delete()
 
-            val dl = Downloader(http)
+            val dl = Downloader(dlHttp)
             message = "Downloading ${pkgAsset.name}…"
             dl.download(pkgAsset.downloadUrl, pkgFile) { read, total ->
                 pct = total?.takeIf { it > 0 }?.let { (read * 100 / it).toInt() }
@@ -139,6 +140,7 @@ object UpdateJob {
             }
         } finally {
             http.close()
+            dlHttp.close()
         }
     }
 
