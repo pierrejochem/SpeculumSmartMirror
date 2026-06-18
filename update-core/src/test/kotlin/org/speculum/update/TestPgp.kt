@@ -2,6 +2,7 @@ package org.speculum.update
 
 import org.bouncycastle.bcpg.ArmoredOutputStream
 import org.bouncycastle.bcpg.HashAlgorithmTags
+import org.bouncycastle.bcpg.PublicKeyPacket
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.openpgp.PGPKeyRingGenerator
 import org.bouncycastle.openpgp.PGPPublicKey
@@ -25,7 +26,8 @@ object TestPgp {
 
     fun generate(): Material {
         val kpg = KeyPairGenerator.getInstance("RSA", "BC").apply { initialize(2048) }
-        val pgpKeyPair = JcaPGPKeyPair(PGPPublicKey.RSA_GENERAL, kpg.generateKeyPair(), Date())
+        val pgpKeyPair =
+            JcaPGPKeyPair(PublicKeyPacket.VERSION_4, PGPPublicKey.RSA_GENERAL, kpg.generateKeyPair(), Date())
         val sha1 = JcaPGPDigestCalculatorProviderBuilder().build().get(HashAlgorithmTags.SHA1)
         val ringGen = PGPKeyRingGenerator(
             PGPSignature.POSITIVE_CERTIFICATION,
