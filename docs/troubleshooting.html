@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting — Speculum</title>
+<meta name="description" content="Fix common Speculum problems: the kiosk service starts but nothing renders, XDG_RUNTIME_DIR / seat conflicts, two mirrors fighting over port 8080, and in-app updater errors.">
+<link rel="icon" href="assets/img/speculum-icon.svg">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html"><img src="assets/img/speculum-icon.svg" alt=""> Speculum</a>
+    <button class="menu-toggle" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('open')">☰</button>
+    <nav class="nav-links" id="nav">
+      <a href="index.html">Home</a>
+      <a href="getting-started.html">Getting Started</a>
+      <a href="showcase.html">Showcase</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="api-reference.html">API Reference</a>
+      <a href="user-guide.html">User Guide</a>
+      <a href="updating.html">Updating</a>
+      <a href="troubleshooting.html" class="active">Troubleshooting</a>
+      <a href="https://github.com/pierrejochem/SpeculumSmartMirror" class="gh">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p class="kicker">Troubleshooting</p>
+  <h1>Common problems &amp; fixes</h1>
+  <p class="lead">Real issues seen setting up the Raspberry Pi kiosk and the in-app updater, with the exact cause and fix for each.</p>
+
+  <div class="toc">
+    <strong>On this page</strong>
+    <ul>
+      <li><a href="#kiosk-blank">Kiosk service runs but nothing appears</a></li>
+      <li><a href="#xdg">"XDG_RUNTIME_DIR is not set"</a></li>
+      <li><a href="#autologin">Autologin isn't needed for the service</a></li>
+      <li><a href="#dual">Two mirrors / port 8080 in use</a></li>
+      <li><a href="#update-unavailable">Updater says "install manually"</a></li>
+      <li><a href="#update-check">"Couldn't check GitHub for updates"</a></li>
+      <li><a href="#update-perms">Update fails: permission / read-only / timeout</a></li>
+      <li><a href="#update-restart">Updated, but the screen still shows the old version</a></li>
+    </ul>
+  </div>
+
+  <h2 id="kiosk-blank">Kiosk service runs but nothing appears</h2>
+  <p><strong>Symptom.</strong> <code>systemctl status speculum.service</code> shows <code>active</code> (or it starts and immediately "Deactivated successfully" after ~1&nbsp;second), but the mirror never draws on the display.</p>
+  <p><strong>Cause.</strong> <a href="https://github.com/cage-kiosk/cage"><code>cage</code></a> needs to own the seat (the GPU / <code>tty1</code>). If the Pi <strong>boots into the desktop</strong>, the desktop session already holds <code>seat0</code>, so cage gets no surface and the app exits cleanly with no output.</p>
+  <p><strong>Fix — boot to console so the kiosk owns the screen:</strong></p>
+  <pre><code>systemctl get-default                       # graphical.target = boots to desktop (the conflict)
+
+sudo systemctl set-default multi-user.target   # boot to console, no desktop
+sudo loginctl enable-linger "$USER"            # create /run/user/&lt;uid&gt; at boot (see below)
+sudo systemctl enable speculum.service
+sudo reboot</code></pre>
+  <p>After reboot, with no desktop competing, cage takes <code>tty1</code> and the mirror renders fullscreen. Check:</p>
+  <pre><code>systemctl status speculum.service --no-pager
+journalctl -u speculum.service --since today -n 30 --no-pager
+command -v cage      # must be installed:  sudo apt install cage</code></pre>
+  <div class="note">To watch the real failure live, switch to a bare console (Ctrl+Alt+F1, log in), <code>sudo systemctl stop speculum.service</code>, then run <code>cage -s -- /opt/speculum/bin/speculum</code> and read what it prints.</div>
+
+  <h2 id="xdg">"XDG_RUNTIME_DIR is not set in the environment"</h2>
+  <p><strong>Symptom.</strong> The service crash-loops with <code>cage[…] [ERROR] XDG_RUNTIME_DIR is not set in the environment</code>.</p>
+  <p><strong>Cause.</strong> cage needs a user runtime dir (<code>/run/user/&lt;uid&gt;</code>). The unit asks pam_systemd (<code>PAMName=speculum</code>) to create it, but with no active login session there's nothing to attach to.</p>
+  <p><strong>Fix — enable lingering</strong> so systemd creates the runtime dir at boot:</p>
+  <pre><code>sudo loginctl enable-linger "$USER"
+sudo systemctl restart speculum.service</code></pre>
+  <p>If it still complains, pin it explicitly:</p>
+  <pre><code>sudo systemctl edit speculum.service
+# add:
+#   [Service]
+#   Environment=XDG_RUNTIME_DIR=/run/user/1000      # 1000 = id -u &lt;your-user&gt;
+sudo systemctl daemon-reload &amp;&amp; sudo systemctl restart speculum.service</code></pre>
+
+  <h2 id="autologin">Autologin isn't needed for the service</h2>
+  <p>For the packaged <strong><code>speculum.service</code> kiosk you do not need console autologin</strong>. The unit opens its own PAM session bound to <code>tty1</code>/<code>seat0</code> and cage takes the screen directly. Trying to also set up autologin is a <em>different, competing</em> launch model — don't mix them. If you'd rather launch the mirror from an autologin shell instead of the service, run it bare in your session and disable <code>speculum.service</code> (then updates use the session self-relaunch path).</p>
+
+  <h2 id="dual">Two mirrors / port 8080 in use</h2>
+  <p><strong>Symptom.</strong> The admin UI / <code>curl localhost:8080/api/version</code> reports an <em>old</em> version even after a successful update; <code>pgrep -af speculum</code> shows a process that predates the update.</p>
+  <p><strong>Cause.</strong> Two independent mirrors are running — e.g. a desktop-session launch <em>and</em> an enabled <code>speculum.service</code>. They both try to bind port <code>8080</code>; whichever started first holds it, and the updater may restart the other one (the one not on screen).</p>
+  <p><strong>Fix — run exactly one launcher.</strong> For a kiosk, boot to console and use only the service (<a href="#kiosk-blank">above</a>); kill any stray session mirror:</p>
+  <pre><code>pgrep -af speculum                       # see every instance
+sudo systemctl disable --now speculum.service   # …if you instead want the desktop launch
+pkill -f /opt/speculum/bin/speculum             # stop a stale session mirror
+curl -s localhost:8080/api/version              # confirm one instance, right version</code></pre>
+
+  <h2 id="update-unavailable">Updater says "install manually" / "release is unsigned"</h2>
+  <p><strong>Cause.</strong> The in-app updater is <strong>fail-closed</strong>: it only installs a release whose <code>SHA256SUMS</code> carries a valid GPG signature from the key bundled in the app. If the release has no <code>SHA256SUMS.asc</code> (signing not configured in CI), it refuses and points you at the releases page. Development builds also show this.</p>
+  <p><strong>Fix.</strong> Update <a href="updating.html#manual">manually</a> for now. For maintainers: configure the <code>GPG_PRIVATE_KEY</code> / <code>GPG_PASSPHRASE</code> repo secrets (matching <a href="https://github.com/pierrejochem/SpeculumSmartMirror/blob/main/KEYS"><code>KEYS</code></a>) and cut a release — the release workflow then signs every asset and the updater goes live automatically.</p>
+
+  <h2 id="update-check">"Couldn't check GitHub for updates"</h2>
+  <ul>
+    <li><strong>No network / rate-limited.</strong> The check uses the unauthenticated GitHub API. Verify outbound HTTPS to <code>api.github.com</code>.</li>
+    <li><strong>Wrong repo.</strong> The default repo is the canonical <code>pierrejochem/SpeculumSmartMirror</code>. If you set a custom <code>repo</code> in the <code>updatenotifier</code> module config, make sure it points at a repo that publishes signed releases.</li>
+  </ul>
+
+  <h2 id="update-perms">Update fails: permission denied / read-only / timeout</h2>
+  <p>These were bugs fixed in <strong>v0.5.6</strong>; if you hit them, update to v0.5.6+ (manually once) and they go away:</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Journal line</th><th>Cause &amp; fix</th></tr></thead>
+    <tbody>
+      <tr><td><code>staged.pkg: Permission denied</code></td><td>Old builds staged into a root-owned dir tied to user <code>pi</code>. Now staged under the mirror user's own <code>~/.speculum/update</code>. Fixed in v0.5.6.</td></tr>
+      <tr><td><code>Read-only file system</code> creating the package</td><td>The updater unit set <code>ProtectHome=read-only</code>, blocking the home-staging write. Removed in v0.5.6.</td></tr>
+      <tr><td><code>Request timeout has expired</code> mid-download</td><td>The HTTP client's default 15&nbsp;s request cap aborted the ~100&nbsp;MB download. The downloader now has no whole-request timeout (only a stall timeout). Fixed in v0.5.6.</td></tr>
+      <tr><td>"could not authorize (polkit)"</td><td>polkit isn't installed or the rule didn't load. Confirm polkit is present, or use the <code>sudoers</code> fallback. The rule authorizes any active local session to start <code>speculum-update.service</code>.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Inspect the privileged side any time with:</p>
+  <pre><code>journalctl -u speculum-update.service -n 40 --no-pager</code></pre>
+
+  <h2 id="update-restart">Updated, but the screen still shows the old version</h2>
+  <p><strong>Cause.</strong> The package installed, but the <em>running</em> mirror process wasn't the one that got restarted — usually the <a href="#dual">two-mirrors</a> situation, or the on-screen mirror runs a different launcher than the one the helper restarted.</p>
+  <p><strong>Fix.</strong> Settle on one launch method (<a href="#dual">above</a>). The helper restarts <code>speculum.service</code> only when it's active; a <code>--user</code> service or a bare session launch is restarted by the app itself. The installed files are already the new version, so simply relaunching the on-screen mirror once brings it to the new release.</p>
+
+  <div class="btn-row" style="justify-content:flex-start;">
+    <a class="btn primary" href="updating.html">How updates work →</a>
+    <a class="btn" href="user-guide.html#kiosk">Kiosk setup →</a>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="footer-inner">
+    <span>Speculum — modular smart-mirror dashboard.</span>
+    <span class="footer-links">
+      <a href="https://github.com/pierrejochem/SpeculumSmartMirror">GitHub</a>
+      <a href="updating.html">Updating</a>
+      <a href="user-guide.html">User Guide</a>
+    </span>
+  </div>
+</footer>
+</body>
+</html>
