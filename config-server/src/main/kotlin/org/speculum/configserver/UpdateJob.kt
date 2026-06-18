@@ -82,7 +82,8 @@ object UpdateJob {
             target = release.tagName.removePrefix("v")
 
             val staging = UpdateService.stagingDir
-            if (!staging.isDirectory) return fail("Staging dir missing — reinstall the package.")
+            if (!staging.isDirectory && !staging.mkdirs())
+                return fail("Couldn't create the update staging dir.")
             if (staging.usableSpace < pkgAsset.size * 2)
                 return fail("Not enough disk space for the update.")
 

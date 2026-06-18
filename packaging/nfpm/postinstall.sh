@@ -23,14 +23,8 @@ fi
 [ -f /opt/speculum/libexec/speculum-apply-update ] && \
     chmod 0755 /opt/speculum/libexec/speculum-apply-update || true
 
-# Staging dir the unprivileged mirror writes verified packages into, then the
-# root oneshot reads. root-owned, group `pi`-writable (setgid). If the `pi`
-# group is absent, fall back to root-only and the updater stays disabled.
-if getent group pi >/dev/null 2>&1; then
-    install -d -o root -g pi -m 2770 /var/lib/speculum/update
-else
-    install -d -o root -g root -m 0700 /var/lib/speculum/update
-fi
+# The updater stages packages under the mirror user's own ~/.speculum/update at
+# runtime — no root-owned staging dir to provision here.
 
 # Not auto-enabled: speculum.service ships with User=pi and runs a fullscreen
 # Wayland kiosk via cage, so it needs the operator to set the display user and

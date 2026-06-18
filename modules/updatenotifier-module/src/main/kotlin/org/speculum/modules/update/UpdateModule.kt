@@ -33,11 +33,11 @@ import org.speculum.update.isNewer
  * `speculum.version` system property from the build) — never read from config.
  *
  * Config keys:
- *  - `repo`  GitHub "owner/name"  (default "pierrejochem/Speculum")
+ *  - `repo`  GitHub "owner/name"  (default "pierrejochem/SpeculumSmartMirror")
  */
 class UpdateModule(config: ModuleConfig) : MirrorModule(config) {
 
-    private val repo = config.string("repo", "pierrejochem/Speculum")
+    private val repo = config.string("repo", "pierrejochem/SpeculumSmartMirror")
     private val current = detectVersion()
     private val dev = isDevVersion(current)
     private val provider = GitHubReleaseProvider(repo)

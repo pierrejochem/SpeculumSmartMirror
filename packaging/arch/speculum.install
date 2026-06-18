@@ -1,14 +1,5 @@
-# Arch install scriptlet — creates the in-app updater's staging dir. The
-# unprivileged mirror (User=pi) writes a verified package here; the root oneshot
-# speculum-update.service reads it. root-owned, group `pi`-writable (setgid).
-_setup_update_staging() {
-    systemctl daemon-reload >/dev/null 2>&1 || true
-    if getent group pi >/dev/null 2>&1; then
-        install -d -o root -g pi -m 2770 /var/lib/speculum/update
-    else
-        install -d -o root -g root -m 0700 /var/lib/speculum/update
-    fi
-}
-
-post_install() { _setup_update_staging; }
-post_upgrade() { _setup_update_staging; }
+# Arch install scriptlet. The in-app updater stages packages under the mirror
+# user's own ~/.speculum/update at runtime, so there's no root-owned staging dir
+# to provision — just refresh systemd for the new updater unit.
+post_install() { systemctl daemon-reload >/dev/null 2>&1 || true; }
+post_upgrade() { systemctl daemon-reload >/dev/null 2>&1 || true; }

@@ -33,8 +33,12 @@ data class StagedMeta(val filename: String, val sha256: String, val version: Str
  */
 object UpdateService {
 
-    /** Fixed staging dir the postinstall script creates (root:pi, mode 2770). */
-    val stagingDir: File = File("/var/lib/speculum/update")
+    /**
+     * Staging dir the unprivileged mirror writes verified packages into — under
+     * its own home (always writable, no special group needed). The root helper
+     * locates it by scanning home dirs, so the two never disagree on a user.
+     */
+    val stagingDir: File = File(System.getProperty("user.home"), ".speculum/update")
 
     /** One shared HTTP client — status() is polled, so don't leak a client per call. */
     private val http: HttpClient by lazy { GitHubReleaseProvider.defaultClient() }
@@ -45,7 +49,7 @@ object UpdateService {
             ConfigStore.load().modules.firstOrNull { it.module == "updatenotifier" }?.config?.get("repo")
         }.getOrNull()?.takeIf { it.isNotBlank() }
             ?: System.getenv("MIRROR_UPDATE_REPO")
-            ?: "pierrejochem/Speculum"
+            ?: "pierrejochem/SpeculumSmartMirror"
 
     /** Pinned signing public key bundled in the app resources (for the app-side check). */
     fun pinnedKey(): ByteArray? {

@@ -7,8 +7,22 @@
 # installing. Then it restarts the mirror service if (and only if) it is active.
 set -eu
 
-STAGE=/var/lib/speculum/update
 KEY=/opt/speculum/share/speculum-signing-key.asc
+
+# The unprivileged mirror wrote a verified package into its OWN
+# ~/.speculum/update (always writable, no shared group needed). Find it: prefer
+# the configured service user's home, then scan home dirs — exactly one holds a
+# staged.pkg. We trust nothing here beyond "a package is staged"; the signature
+# is re-verified below regardless of who staged it.
+resolve_stage() {
+    _u="$(systemctl show -p User --value speculum.service 2>/dev/null || true)"
+    _h="$(getent passwd "$_u" 2>/dev/null | cut -d: -f6 || true)"
+    for d in "$_h" /root /home/*; do
+        [ -n "$d" ] && [ -f "$d/.speculum/update/staged.pkg" ] && { printf '%s' "$d/.speculum/update"; return 0; }
+    done
+    return 1
+}
+STAGE="$(resolve_stage)" || { echo "speculum-apply-update: nothing staged" >&2; exit 1; }
 META="$STAGE/staged.meta"
 PKG="$STAGE/staged.pkg"
 

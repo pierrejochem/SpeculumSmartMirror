@@ -17,7 +17,7 @@ class UpdateModuleFactory : ModuleFactory {
         // manifest) and never stored in config; the admin reads it live from
         // GET /api/version. So nothing version-related is persisted here.
         config = mapOf(
-            "repo" to "pierrejochem/Speculum",
+            "repo" to "pierrejochem/SpeculumSmartMirror",
         ),
     )
 
