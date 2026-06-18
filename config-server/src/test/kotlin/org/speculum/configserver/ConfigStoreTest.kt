@@ -32,6 +32,21 @@ class ConfigStoreTest {
     }
 
     @Test
+    fun loadStripsStaleCurrentVersion(@TempDir dir: Path) {
+        val file = dir.resolve("config.json")
+        System.setProperty("mirror.config", file.toString())
+        try {
+            file.toFile().writeText(
+                """{"modules":[{"module":"updatenotifier","config":{"repo":"a/b","currentVersion":"dev"}}]}"""
+            )
+            val loaded = ConfigStore.load()
+            assertEquals(mapOf("repo" to "a/b"), loaded.modules.single().config)
+        } finally {
+            System.clearProperty("mirror.config")
+        }
+    }
+
+    @Test
     fun loadsDefaultWhenMissing(@TempDir dir: Path) {
         System.setProperty("mirror.config", dir.resolve("absent.json").toString())
         try {

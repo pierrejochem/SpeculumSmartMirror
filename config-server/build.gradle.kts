@@ -37,6 +37,10 @@ application {
 // and finds the built web UI at config-server/web/dist.
 tasks.named<JavaExec>("run") {
     workingDir = rootProject.projectDir
+    // Surface the shared version for the admin's read-only display (GET /api/version).
+    // In the packaged app the server is embedded in the composeApp JVM, which
+    // already sets this property; standalone runs get it from gradle.properties.
+    jvmArgs("-Dspeculum.version=${providers.gradleProperty("speculum.version").getOrElse("dev")}")
 }
 
 dependencies {

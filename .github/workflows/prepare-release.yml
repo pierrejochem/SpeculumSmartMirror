@@ -72,7 +72,7 @@ jobs:
             echo '</details>'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Tag and dispatch the build
+      - name: Bump version, tag and dispatch the build
         if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -80,12 +80,19 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          ver="${NEXT#v}"
+          # Sync the single version source so the packaged app reports the real
+          # version (the tag must carry this commit — release.yml builds the tag).
+          sed -i "s/^speculum\.version=.*/speculum.version=${ver}/" gradle.properties
+          git add gradle.properties
+          git commit -m "chore(release): ${NEXT}"
+          git push origin "HEAD:${{ github.ref_name }}"
           git tag -a "$NEXT" -m "Release $NEXT"
           git push origin "$NEXT"
           # A GITHUB_TOKEN tag push does not trigger release.yml's `push` event,
           # so kick its workflow_dispatch explicitly (dispatch IS allowed).
           gh workflow run release.yml -f tag="$NEXT"
-          echo "Tagged $NEXT and dispatched release.yml." >> "$GITHUB_STEP_SUMMARY"
+          echo "Bumped to $ver, tagged $NEXT and dispatched release.yml." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Dry run notice
         if: ${{ inputs.dry_run }}

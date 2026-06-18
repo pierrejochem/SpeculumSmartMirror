@@ -29,6 +29,15 @@ import java.io.File
 @Serializable data class LoginResponse(val token: String)
 @Serializable data class ChangePasswordRequest(val currentPassword: String, val newPassword: String)
 @Serializable data class Message(val message: String)
+@Serializable data class VersionResponse(val version: String)
+
+/**
+ * Running version for the admin's read-only display. Injected as
+ * `-Dspeculum.version` (gradle.properties when standalone; the composeApp JVM
+ * when embedded in the packaged app). Falls back to "dev" when unset.
+ */
+private fun runningVersion(): String =
+    (System.getProperty("speculum.version")?.takeIf { it.isNotBlank() } ?: "dev").removePrefix("v")
 
 fun main() = startServer(wait = true)
 
@@ -77,6 +86,11 @@ fun Application.module() {
                 call.respond(Message("Password updated"))
             else
                 call.respond(HttpStatusCode.Unauthorized, Message("Current password is incorrect"))
+        }
+
+        // Read-only running version for the header badge — not sensitive, no auth.
+        get("/api/version") {
+            call.respond(VersionResponse(runningVersion()))
         }
 
         get("/api/modules") {

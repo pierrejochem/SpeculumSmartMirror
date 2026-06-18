@@ -22,21 +22,18 @@ import org.speculum.core.MirrorModule
  * Shows the update status of the running mirror against the repo's latest
  * GitHub release. When a newer release exists it shows an "Update available"
  * banner with the new version; otherwise a discreet up-to-date hint with the
- * installed version. Compares the running version (`currentVersion` config)
- * against the latest release tag.
+ * installed version. Compares the running version against the latest release tag.
  *
  * The running version is detected automatically (the host sets the
- * `speculum.version` system property from the build); `currentVersion` config
- * only overrides it when set.
+ * `speculum.version` system property from the build) — never read from config.
  *
  * Config keys:
- *  - `repo`            GitHub "owner/name"  (default "pierrejochem/Speculum")
- *  - `currentVersion`  override the auto-detected installed version (optional)
+ *  - `repo`  GitHub "owner/name"  (default "pierrejochem/Speculum")
  */
 class UpdateModule(config: ModuleConfig) : MirrorModule(config) {
 
     private val repo = config.string("repo", "pierrejochem/Speculum")
-    private val current = detectVersion(config.string("currentVersion", ""))
+    private val current = detectVersion()
     private val dev = isDevVersion(current)
     private val provider = GitHubReleaseProvider(repo)
 

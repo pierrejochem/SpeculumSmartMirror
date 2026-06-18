@@ -8,17 +8,19 @@ export function ConfigEditor({ onLogout }: { onLogout: () => void }) {
   const [config, setConfig] = useState<MirrorConfig | null>(null);
   const [available, setAvailable] = useState<AvailableModule[]>([]);
   const [ips, setIps] = useState<string[]>([]);
+  const [version, setVersion] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
-    Promise.all([api.getConfig(), api.getModules(), api.getIps()])
-      .then(([c, m, ip]) => {
+    Promise.all([api.getConfig(), api.getModules(), api.getIps(), api.getVersion()])
+      .then(([c, m, ip, v]) => {
         setConfig(c);
         setAvailable(m);
         setIps(ip);
+        setVersion(v.version);
       })
       .catch((e) => (e.message === "Unauthorized" ? onLogout() : setError(e.message)));
   }, []);
@@ -78,6 +80,7 @@ export function ConfigEditor({ onLogout }: { onLogout: () => void }) {
           <Mark size={34} />
           <span className="wm">Specul<span className="wordmark-u">u</span>m</span>
           <span className="tag">config</span>
+          {version && <span className="tag" title="Running app version">v{version}</span>}
         </div>
         <span className="spacer" />
         <button
@@ -165,8 +168,6 @@ function ModuleCard({
   // Special editors replace the raw key-value rows for these keys.
   const hidden = (k: string) =>
     (isCompliments && k === "compliments") || (isQr && (k === "ip" || k === "size"));
-  // Auto-detected, not user-editable (e.g. the running version).
-  const readonlyKey = (k: string) => k === "currentVersion";
   const entries = Object.entries(mod.config).filter(([k]) => !hidden(k));
 
   const setKey = (key: string, value: string) =>
@@ -201,23 +202,15 @@ function ModuleCard({
       </div>
 
       <div className="kv">
-        {entries.map(([k, v], idx) =>
-          readonlyKey(k) ? (
-            <div className="kv-row" key={idx}>
-              <input className="k" value={k} readOnly disabled />
-              <input className="v" value={v} readOnly disabled title="Auto-detected from the running app" />
-              <span className="kv-lock small muted" title="Auto-detected — read-only">auto</span>
-            </div>
-          ) : (
-            <div className="kv-row" key={idx}>
-              <input className="k" placeholder="key" value={k}
-                onChange={(e) => setConfigKey(k, e.target.value, v)} />
-              <input className="v" placeholder="value" value={v}
-                onChange={(e) => setConfigKey(k, k, e.target.value)} />
-              <button className="ghost danger" aria-label="Remove option" title="Remove option" onClick={() => removeKey(k)}>×</button>
-            </div>
-          )
-        )}
+        {entries.map(([k, v], idx) => (
+          <div className="kv-row" key={idx}>
+            <input className="k" placeholder="key" value={k}
+              onChange={(e) => setConfigKey(k, e.target.value, v)} />
+            <input className="v" placeholder="value" value={v}
+              onChange={(e) => setConfigKey(k, k, e.target.value)} />
+            <button className="ghost danger" aria-label="Remove option" title="Remove option" onClick={() => removeKey(k)}>×</button>
+          </div>
+        ))}
         <button className="ghost small" onClick={addKey}>+ option</button>
       </div>
 

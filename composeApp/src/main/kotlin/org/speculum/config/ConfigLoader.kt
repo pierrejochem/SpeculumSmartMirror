@@ -18,7 +18,7 @@ object ConfigLoader {
         val file = ConfigPaths.configFile()
         if (file.exists()) {
             runCatching { json.decodeFromString<MirrorConfig>(file.readText()) }
-                .onSuccess { return it }
+                .onSuccess { return it.sanitized() }
         }
         return json.decodeFromString(DEFAULT_CONFIG)
     }

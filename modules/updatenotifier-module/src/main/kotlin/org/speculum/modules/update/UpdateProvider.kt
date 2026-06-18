@@ -43,9 +43,9 @@ data class Release(
 const val DEV_VERSION = "dev"
 
 /**
- * The installed version. Precedence: explicit [override] (config) always wins;
- * otherwise a development run reports [DEV_VERSION], and a packaged build uses
- * the `speculum.version` system property the host injects (else its manifest
+ * The installed version, detected automatically — never read from or persisted
+ * to config. A development run reports [DEV_VERSION]; a packaged build uses the
+ * `speculum.version` system property the host injects (else its manifest
  * Implementation-Version, else [DEV_VERSION]).
  *
  * Dev is detected by the absence of `jpackage.app-path`, the system property
@@ -53,12 +53,11 @@ const val DEV_VERSION = "dev"
  * running via `./gradlew run` always shows "dev" regardless of the injected
  * version property.
  */
-fun detectVersion(override: String = ""): String = override.ifBlank {
+fun detectVersion(): String =
     if (isDevRuntime()) DEV_VERSION
-    else System.getProperty("speculum.version")
+    else (System.getProperty("speculum.version")
         ?: Release::class.java.`package`?.implementationVersion
-        ?: DEV_VERSION
-}.removePrefix("v")
+        ?: DEV_VERSION).removePrefix("v")
 
 /** True when not running from the packaged app (jpackage launcher sets app-path). */
 private fun isDevRuntime(): Boolean =

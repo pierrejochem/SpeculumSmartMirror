@@ -13,12 +13,11 @@ class UpdateModuleFactory : ModuleFactory {
         module = "updatenotifier",
         position = "top_center",
         refreshIntervalMs = 6 * 60 * 60_000L, // 6h
-        // currentVersion is auto-detected from the running app (system property /
-        // manifest). It's surfaced here so the admin can display it, but it's
-        // shown read-only there — editing it has no lasting effect.
+        // The running version is auto-detected at runtime (system property /
+        // manifest) and never stored in config; the admin reads it live from
+        // GET /api/version. So nothing version-related is persisted here.
         config = mapOf(
             "repo" to "pierrejochem/Speculum",
-            "currentVersion" to detectVersion(),
         ),
     )
 

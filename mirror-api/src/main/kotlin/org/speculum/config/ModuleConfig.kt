@@ -33,3 +33,18 @@ data class MirrorConfig(
     val units: String = "metric",
     val modules: List<ModuleConfig> = emptyList()
 )
+
+/**
+ * Strips keys that are no longer persisted but may linger in older config files.
+ * `currentVersion` was once baked into the updatenotifier module's config and
+ * then wrongly overrode the auto-detected version; the app now always detects
+ * the version at runtime, so the stale key is removed on load (a later save then
+ * drops it from disk for good).
+ */
+fun MirrorConfig.sanitized(): MirrorConfig = copy(
+    modules = modules.map { m ->
+        if (m.module == "updatenotifier" && "currentVersion" in m.config)
+            m.copy(config = m.config - "currentVersion")
+        else m
+    }
+)

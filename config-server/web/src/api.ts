@@ -51,6 +51,7 @@ export const api = {
     req<{ message: string }>("/api/config", { method: "PUT", body: JSON.stringify(config) }),
   getModules: () => req<AvailableModule[]>("/api/modules"),
   getIps: () => req<string[]>("/api/ips"),
+  getVersion: () => req<{ version: string }>("/api/version"),
   changePassword: (currentPassword: string, newPassword: string) =>
     req<{ message: string }>("/api/password", {
       method: "POST",

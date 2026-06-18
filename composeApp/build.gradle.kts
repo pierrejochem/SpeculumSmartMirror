@@ -38,7 +38,9 @@ dependencies {
 
 // Single source of the app version: the package version, and (via a system
 // property) what the update-notifier module compares against the latest release.
-val appVersion = "0.3.6"
+// The value lives in gradle.properties so the Prepare-release workflow can bump
+// it (and :config-server shares it); falls back to a dev placeholder locally.
+val appVersion = providers.gradleProperty("speculum.version").getOrElse("0.0.0")
 
 // Module JARs are bundled into the package here; at runtime the app finds them
 // via `compose.application.resources.dir` (see PluginLoader).

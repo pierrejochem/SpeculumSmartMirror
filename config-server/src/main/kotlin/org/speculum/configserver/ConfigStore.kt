@@ -1,9 +1,9 @@
 package org.speculum.configserver
 
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.speculum.config.ConfigPaths
 import org.speculum.config.MirrorConfig
+import org.speculum.config.sanitized
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -23,7 +23,7 @@ object ConfigStore {
 
     fun load(): MirrorConfig =
         if (file.exists()) runCatching { json.decodeFromString<MirrorConfig>(file.readText()) }
-            .getOrDefault(MirrorConfig())
+            .getOrDefault(MirrorConfig()).sanitized()
         else MirrorConfig()
 
     fun save(config: MirrorConfig) {
