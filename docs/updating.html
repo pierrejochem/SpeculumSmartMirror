@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Updating — Speculum</title>
+<meta name="description" content="Speculum's one-click in-app updater: how it works, requirements, the security model (signed releases, fail-closed verification), and the manual fallback.">
+<link rel="icon" href="assets/img/speculum-icon.svg">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html"><img src="assets/img/speculum-icon.svg" alt=""> Speculum</a>
+    <button class="menu-toggle" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('open')">☰</button>
+    <nav class="nav-links" id="nav">
+      <a href="index.html">Home</a>
+      <a href="getting-started.html">Getting Started</a>
+      <a href="showcase.html">Showcase</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="api-reference.html">API Reference</a>
+      <a href="user-guide.html">User Guide</a>
+      <a href="updating.html" class="active">Updating</a>
+      <a href="troubleshooting.html">Troubleshooting</a>
+      <a href="https://github.com/pierrejochem/SpeculumSmartMirror" class="gh">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p class="kicker">Updating</p>
+  <h1>One-click updates</h1>
+  <p class="lead">A packaged Speculum can update itself from the web admin: it downloads the latest signed release, verifies it, installs it, and restarts the mirror — without you touching the Pi.</p>
+
+  <div class="toc">
+    <strong>On this page</strong>
+    <ul>
+      <li><a href="#use">Using it</a></li>
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#restart">How the mirror restarts</a></li>
+      <li><a href="#security">Security model</a></li>
+      <li><a href="#requirements">Requirements</a></li>
+      <li><a href="#manual">Manual update (fallback)</a></li>
+    </ul>
+  </div>
+
+  <h2 id="use">Using it</h2>
+  <p>Open the web admin (<code>http://&lt;pi-ip&gt;:8080</code>) and find the <strong>Updates</strong> card:</p>
+  <ul>
+    <li><strong>Up to date</strong> — you're on the latest release.</li>
+    <li><strong>Update available: v0.5.6 → v0.5.7</strong> with an <strong>Update&nbsp;now</strong> button — click it.</li>
+    <li>A muted message (e.g. "install it manually for now", "development build") — the in-app updater isn't available for this install; see <a href="#requirements">Requirements</a>.</li>
+  </ul>
+  <p>After clicking, the card shows progress — <em>Downloading… → Verifying… → Installing…</em> — then "<em>Speculum is restarting — this page will reconnect</em>". When the new version answers, the version badge in the header flips to the new release.</p>
+  <div class="note">The admin page intentionally loses its connection during the restart and reconnects on its own. That's expected — the whole app (mirror + admin server) restarts together.</div>
+
+  <h2 id="how">How it works</h2>
+  <p>The mirror runs <strong>unprivileged</strong>, so it can't install a system package on its own. The update is split across a privilege boundary:</p>
+  <pre><code>[Updates card]  ── POST /api/update/start ──▶  [config-server, in the mirror JVM]
+                                                  1. find the latest GitHub release
+                                                  2. pick the asset for this OS + CPU
+                                                  3. download it + SHA256SUMS + .asc
+                                                  4. verify GPG signature + SHA-256   (unprivileged)
+                                                  5. stage it under ~/.speculum/update
+                                                  6. systemctl start speculum-update.service
+                                                          │  (authorized by a polkit rule)
+                                                          ▼
+                                          [speculum-update.service — runs as root]
+                                                  7. re-verify signature + checksum AS ROOT
+                                                  8. apt-get / dnf / pacman install the package
+                                                  9. restart the mirror</code></pre>
+  <p>The unprivileged side only <em>prepares</em> the update; the privileged helper <em>re-verifies everything independently</em> before installing. The boundary passes no arguments — the helper finds the staged package itself and trusts nothing the app asserts.</p>
+
+  <h2 id="restart">How the mirror restarts</h2>
+  <p>After the package is installed, the running mirror has to be replaced. Speculum picks the right method for how you launched it:</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>How you run the mirror</th><th>How it's replaced</th></tr></thead>
+    <tbody>
+      <tr><td>System kiosk service (<code>speculum.service</code>, active)</td><td>The root helper runs <code>systemctl restart speculum.service</code>.</td></tr>
+      <tr><td>A <code>--user</code> systemd service</td><td>The app restarts its own user unit (<code>systemctl --user restart …</code>).</td></tr>
+      <tr><td>A desktop / login session (bare launch)</td><td>The app relaunches the new binary in your session, then exits the old one.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="warn"><strong>Run one launcher, not two.</strong> If both a desktop-session mirror <em>and</em> <code>speculum.service</code> are running, they fight over port <code>8080</code> and the updater may restart the one that isn't on screen. Pick a single launch method — see <a href="troubleshooting.html#dual">Troubleshooting → two mirrors</a>.</div>
+
+  <h2 id="security">Security model</h2>
+  <ul>
+    <li><strong>Signed, fail-closed.</strong> An update is applied only if <code>SHA256SUMS</code> carries a valid GPG signature from the key bundled in the app <em>and</em> the package's SHA-256 matches. A missing or bad signature is a refusal — never a downgrade to checksum-only.</li>
+    <li><strong>Verified twice.</strong> The mirror verifies before staging (a UX gate); the root helper re-verifies against its own root-owned copy of the key before installing (the security gate).</li>
+    <li><strong>Least privilege.</strong> The only standing privilege is a polkit rule letting a local session start one fixed unit (<code>speculum-update.service</code>). That unit installs only genuine, signed Speculum packages.</li>
+    <li><strong>Streamed to disk.</strong> Packages (~100&nbsp;MB with a bundled JRE) never sit in memory — important on a 1&nbsp;GB Pi.</li>
+  </ul>
+  <p>See <a href="user-guide.html#verify">Verifying releases</a> to check a signature yourself.</p>
+
+  <h2 id="requirements">Requirements</h2>
+  <ul>
+    <li>A <strong>packaged install</strong> — <code>.deb</code>, <code>.rpm</code>, or Arch <code>.pkg.tar.*</code>. Development runs (<code>./gradlew run</code>) show "development build" and never self-update.</li>
+    <li>A <strong>signed release</strong> on GitHub (the in-app updater refuses unsigned releases). Releases are signed automatically when the project's signing key is configured in CI.</li>
+    <li><strong>polkit</strong> present (standard on Raspberry Pi OS) so the mirror can trigger the privileged install. A <code>sudoers</code> fallback exists for systems without it.</li>
+    <li>Outbound HTTPS to <code>github.com</code> / <code>release-assets.githubusercontent.com</code>.</li>
+  </ul>
+
+  <h2 id="manual">Manual update (fallback)</h2>
+  <p>You can always update by hand — and must, for the first install or an unsigned/old build:</p>
+  <pre><code># download the asset for your arch from the Releases page, then:
+sudo apt install ./speculum_&lt;version&gt;_arm64.deb      # Debian / Raspberry Pi OS
+sudo dnf install ./speculum_&lt;version&gt;_arm64.rpm      # Fedora / RHEL
+sudo pacman -U ./speculum-&lt;version&gt;-1-aarch64.pkg.tar.zst   # Arch
+
+# then restart the mirror:
+sudo systemctl restart speculum.service              # kiosk service
+# …or just relaunch it however you started it</code></pre>
+
+  <div class="btn-row" style="justify-content:flex-start;">
+    <a class="btn primary" href="https://github.com/pierrejochem/SpeculumSmartMirror/releases">Releases ↗</a>
+    <a class="btn" href="troubleshooting.html">Troubleshooting →</a>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="footer-inner">
+    <span>Speculum — modular smart-mirror dashboard.</span>
+    <span class="footer-links">
+      <a href="https://github.com/pierrejochem/SpeculumSmartMirror">GitHub</a>
+      <a href="user-guide.html">User Guide</a>
+      <a href="troubleshooting.html">Troubleshooting</a>
+    </span>
+  </div>
+</footer>
+</body>
+</html>
