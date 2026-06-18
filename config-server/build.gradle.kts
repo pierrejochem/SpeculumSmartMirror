@@ -17,6 +17,7 @@ java {
 
 dependencies {
     implementation(project(":mirror-api"))
+    implementation(project(":update-core"))
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.ktor.server.core)

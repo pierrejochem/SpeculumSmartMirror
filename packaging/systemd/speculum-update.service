@@ -1,0 +1,21 @@
+# Root oneshot that installs a STAGED, ALREADY-VERIFIED Speculum package and
+# restarts the mirror. The unprivileged mirror process (User=pi) downloads and
+# verifies the release, drops it under /var/lib/speculum/update, then triggers
+# this unit via `systemctl --no-block start speculum-update.service` — authorized
+# for user `pi` by /usr/share/polkit-1/rules.d/org.speculum.update.rules.
+#
+# This unit takes NO arguments: the helper reads only the fixed staging path and
+# re-verifies the signature + checksum as root before installing. It trusts
+# nothing the caller asserts.
+[Unit]
+Description=Speculum one-click updater (installs a staged, verified package)
+# Don't run unless something is actually staged.
+ConditionPathExists=/var/lib/speculum/update/staged.pkg
+
+[Service]
+Type=oneshot
+ExecStart=/opt/speculum/libexec/speculum-apply-update
+ProtectHome=read-only
+PrivateTmp=yes
+StandardOutput=journal
+StandardError=journal

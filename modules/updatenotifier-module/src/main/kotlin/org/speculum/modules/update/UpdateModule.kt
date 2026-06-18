@@ -17,6 +17,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.speculum.config.ModuleConfig
 import org.speculum.core.MirrorModule
+import org.speculum.update.GitHubReleaseProvider
+import org.speculum.update.UpdateInfo
+import org.speculum.update.detectVersion
+import org.speculum.update.isDevVersion
+import org.speculum.update.isNewer
 
 /**
  * Shows the update status of the running mirror against the repo's latest

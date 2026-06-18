@@ -93,6 +93,25 @@ fun Application.module() {
             call.respond(VersionResponse(runningVersion()))
         }
 
+        get("/api/update/status") {
+            if (!call.authed()) return@get call.respond(HttpStatusCode.Unauthorized, Message("Unauthorized"))
+            call.respond(UpdateService.status())
+        }
+
+        post("/api/update/start") {
+            if (!call.authed()) return@post call.respond(HttpStatusCode.Unauthorized, Message("Unauthorized"))
+            val status = UpdateService.status()
+            if (!status.updatable)
+                return@post call.respond(HttpStatusCode.Conflict, Message(status.reason ?: "No update available"))
+            if (UpdateJob.start()) call.respond(HttpStatusCode.Accepted, UpdateJob.snapshot())
+            else call.respond(HttpStatusCode.Conflict, Message("An update is already in progress"))
+        }
+
+        get("/api/update/progress") {
+            if (!call.authed()) return@get call.respond(HttpStatusCode.Unauthorized, Message("Unauthorized"))
+            call.respond(UpdateJob.snapshot())
+        }
+
         get("/api/modules") {
             if (!call.authed()) return@get call.respond(HttpStatusCode.Unauthorized, Message("Unauthorized"))
             call.respond(scanAvailableModules())

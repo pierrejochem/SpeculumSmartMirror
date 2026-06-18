@@ -412,3 +412,12 @@ input, select, textarea { max-width: 100%; min-width: 0; }
   .brand .tag { display: none; }
   .wordmark { font-size: 34px; }
 }
+
+/* Updates card: status/action on one line, button pushed to the end. */
+.update-row, .update-busy {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.update-row button { margin-left: auto; }

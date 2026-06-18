@@ -1,0 +1,9 @@
+# OPTIONAL fallback for systems without polkit. NOT installed by default — the
+# polkit rule (org.speculum.update.rules) is the supported mechanism. If your
+# distro lacks polkit, install this with:
+#   sudo install -m 0440 packaging/sudoers/speculum /etc/sudoers.d/speculum
+# and change the updater trigger to use `sudo` (see DEVELOPER_GUIDE.md).
+#
+# Grants user `pi` exactly one privileged action: starting the verified-package
+# updater oneshot. The helper re-verifies the signed package as root.
+pi ALL=(root) NOPASSWD: /usr/bin/systemctl start speculum-update.service

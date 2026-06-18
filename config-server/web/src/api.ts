@@ -20,6 +20,25 @@ export interface AvailableModule {
   defaultConfig: ModuleConfig | null;
 }
 
+export interface UpdateStatus {
+  currentVersion: string;
+  latestVersion: string | null;
+  updateAvailable: boolean;
+  updatable: boolean;
+  installType: string;
+  signed: boolean;
+  releaseUrl: string | null;
+  reason: string | null;
+}
+
+export interface UpdateProgress {
+  // idle | downloading | verifying | installing | restarting | installed | error
+  phase: string;
+  pct: number | null;
+  message: string;
+  targetVersion: string | null;
+}
+
 const TOKEN_KEY = "mm_token";
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
@@ -52,6 +71,9 @@ export const api = {
   getModules: () => req<AvailableModule[]>("/api/modules"),
   getIps: () => req<string[]>("/api/ips"),
   getVersion: () => req<{ version: string }>("/api/version"),
+  getUpdateStatus: () => req<UpdateStatus>("/api/update/status"),
+  startUpdate: () => req<UpdateProgress>("/api/update/start", { method: "POST" }),
+  getUpdateProgress: () => req<UpdateProgress>("/api/update/progress"),
   changePassword: (currentPassword: string, newPassword: string) =>
     req<{ message: string }>("/api/password", {
       method: "POST",

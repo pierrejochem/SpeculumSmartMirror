@@ -75,6 +75,21 @@ contents:
   - src: composeApp/icons/speculum.png
     dst: /usr/share/icons/hicolor/512x512/apps/speculum.png
 
+  # In-app one-click updater. The root oneshot unit installs a staged, verified
+  # package; the polkit rule lets ONLY user `pi` start that one unit; the helper
+  # is the privileged install script; KEYS is the pinned signing key the helper
+  # verifies releases against (root-owned, not user-writable).
+  - src: packaging/systemd/speculum-update.service
+    dst: /usr/lib/systemd/system/speculum-update.service
+  - src: packaging/polkit/org.speculum.update.rules
+    dst: /usr/share/polkit-1/rules.d/org.speculum.update.rules
+  - src: packaging/scripts/speculum-apply-update
+    dst: /opt/speculum/libexec/speculum-apply-update
+    file_info:
+      mode: 0755
+  - src: KEYS
+    dst: /opt/speculum/share/speculum-signing-key.asc
+
 scripts:
   postinstall: packaging/nfpm/postinstall.sh
   postremove: packaging/nfpm/postremove.sh

@@ -15,6 +15,11 @@
 Description=Speculum smart-mirror (fullscreen kiosk)
 After=systemd-user-sessions.service network-online.target
 Wants=network-online.target
+# Cap restart spinning if a bad in-app update crash-loops (Restart=on-failure
+# below): give up after 5 failures in 60s. Recover by reinstalling a known-good
+# package from the releases page.
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 # The account that owns seat0 / the display. Change to your user (e.g. "pi").

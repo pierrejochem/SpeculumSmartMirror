@@ -20,6 +20,7 @@ dependencies {
     // Provided by the host app at runtime (shared via the parent classloader);
     // compile-only keeps the JAR thin.
     compileOnly(project(":mirror-api"))
+    compileOnly(project(":update-core"))
     compileOnly(libs.compose.runtime)
     compileOnly(libs.compose.foundation)
     compileOnly(libs.compose.material3)

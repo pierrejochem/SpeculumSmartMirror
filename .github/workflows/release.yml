@@ -230,6 +230,23 @@ jobs:
       GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
       GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
     steps:
+      # Signing is MANDATORY: the in-app updater verifies SHA256SUMS.asc against
+      # the committed public key (fail-closed), so an unsigned release would be
+      # uninstallable in-app. Fail early and loudly if the secret is missing.
+      - name: Require a signing key
+        run: |
+          if [ -z "$GPG_PRIVATE_KEY" ] || [ -z "$GPG_PASSPHRASE" ]; then
+            echo "::error::GPG_PRIVATE_KEY / GPG_PASSPHRASE secrets are required — the in-app updater rejects unsigned releases. Add them in repo Settings → Secrets."
+            exit 1
+          fi
+
+      # Need the committed public key (/KEYS) to self-check the signing key.
+      # Checkout BEFORE download-artifact (checkout cleans the workspace).
+      - name: Check out (for the pinned public key)
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.version.outputs.v }}
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v8
         with:
@@ -244,10 +261,24 @@ jobs:
           sha256sum * > SHA256SUMS
           echo "----- SHA256SUMS -----"; cat SHA256SUMS
 
-      - name: GPG-sign artifacts (only if a key is configured)
-        if: env.GPG_PRIVATE_KEY != ''
+      - name: Import signing key
+        run: echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+
+      # Guard against the signing key drifting from the public key shipped to
+      # clients: sign a probe and verify it against ONLY the committed /KEYS in a
+      # throwaway keyring. If they diverge, every client update would break.
+      - name: Verify signing key matches committed /KEYS
         run: |
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          probe="$(mktemp)"; echo "speculum-signing-self-check" > "$probe"
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" \
+            --detach-sign --armor -o "$probe.asc" "$probe"
+          export GNUPGHOME="$(mktemp -d)"
+          gpg --batch --import KEYS
+          gpg --batch --verify "$probe.asc" "$probe" \
+            || { echo "::error::Signing key does not match committed /KEYS — clients would reject updates. Update /KEYS or the GPG_PRIVATE_KEY secret."; exit 1; }
+
+      - name: GPG-sign artifacts
+        run: |
           cd out
           sign() { gpg --batch --yes --pinentry-mode loopback \
             --passphrase "$GPG_PASSPHRASE" --detach-sign --armor "$1"; }

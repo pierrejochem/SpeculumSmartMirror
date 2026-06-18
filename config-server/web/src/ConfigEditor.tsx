@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, AvailableModule, MirrorConfig, ModuleConfig, REGIONS } from "./api";
 import { ComplimentsEditor } from "./ComplimentsEditor";
 import { SecurityCard } from "./SecurityCard";
+import { UpdatesCard } from "./UpdatesCard";
 import { Mark } from "./Logo";
 
 export function ConfigEditor({ onLogout }: { onLogout: () => void }) {
@@ -137,6 +138,8 @@ export function ConfigEditor({ onLogout }: { onLogout: () => void }) {
         ))}
         {config.modules.length === 0 && <p className="muted">No modules. Add one above.</p>}
       </section>
+
+      <UpdatesCard />
 
       <SecurityCard />
 

@@ -18,6 +18,7 @@ dependencyResolutionManagement {
 include(":composeApp")
 include(":mirror-api")
 include(":config-server")
+include(":update-core")
 include(":modules:example-module")
 include(":modules:clock-module")
 include(":modules:weather-module")

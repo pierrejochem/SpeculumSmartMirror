@@ -20,6 +20,7 @@ depends=('fontconfig' 'freetype2' 'libx11' 'libxext' 'libxrender' 'libxtst' 'lib
 makedepends=('jdk17-openjdk' 'nodejs' 'npm' 'git')
 options=(!strip)  # never strip the bundled JRE / Skiko natives
 backup=('etc/pam.d/speculum')  # preserve local edits to the PAM stack on upgrade
+install=speculum.install        # creates the updater staging dir post-install
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
         "speculum.desktop")
 sha256sums=('SKIP'
@@ -61,4 +62,18 @@ package() {
   install -Dm644 packaging/pam/speculum \
     "$pkgdir/etc/pam.d/speculum"
   install -Dm644 LICENSE.md "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+  # In-app one-click updater: root oneshot unit, polkit rule (authorizes only
+  # user `pi` to start it), the privileged install helper, and the pinned
+  # signing key the helper verifies releases against.
+  install -Dm644 packaging/systemd/speculum-update.service \
+    "$pkgdir/usr/lib/systemd/system/speculum-update.service"
+  install -Dm644 packaging/polkit/org.speculum.update.rules \
+    "$pkgdir/usr/share/polkit-1/rules.d/org.speculum.update.rules"
+  install -Dm755 packaging/scripts/speculum-apply-update \
+    "$pkgdir/opt/speculum/libexec/speculum-apply-update"
+  install -Dm644 KEYS \
+    "$pkgdir/opt/speculum/share/speculum-signing-key.asc"
+  # Format marker the updater reads to pick the package manager (pacman -U).
+  echo arch > "$pkgdir/opt/speculum/.install-format"
 }

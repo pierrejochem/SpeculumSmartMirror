@@ -1,0 +1,15 @@
+// Authorize the unprivileged mirror user (pi) to start ONLY the Speculum updater
+// oneshot unit — nothing else. This is the entire privilege the in-app updater
+// gains. The helper it starts re-verifies the signed package as root before
+// installing, so this rule grants no ability to install arbitrary code.
+//
+// NOTE: pinned to user "pi" to match User=pi in speculum.service. If you change
+// the service user (systemctl edit --full speculum.service), update this too.
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.systemd1.manage-units" &&
+        action.lookup("unit") == "speculum-update.service" &&
+        action.lookup("verb") == "start" &&
+        subject.user == "pi") {
+        return polkit.Result.YES;
+    }
+});

@@ -119,8 +119,17 @@ val bundleWeb by tasks.registering(Copy::class) {
 // (packaging/nfpm/nfpm.yaml) and the PKGBUILD for Arch — straight from
 // packaging/systemd/speculum.service.
 
+// Bundle the pinned signing public key (single source: repo-root KEYS) so the
+// in-app updater can verify release signatures (app-side check). The privileged
+// helper uses its own root-owned copy at /opt/speculum/share.
+val bundleSigningKey by tasks.registering(Copy::class) {
+    from(rootProject.layout.projectDirectory.file("KEYS"))
+    into(layout.projectDirectory.dir("app-resources/common"))
+    rename { "speculum-signing-key.asc" }
+}
+
 tasks.matching { it.name == "prepareAppResources" }
-    .configureEach { dependsOn(bundlePlugins, bundleWeb) }
+    .configureEach { dependsOn(bundlePlugins, bundleWeb, bundleSigningKey) }
 
 compose.resources {
     publicResClass = true

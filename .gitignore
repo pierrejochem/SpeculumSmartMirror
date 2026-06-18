@@ -27,3 +27,6 @@ build/
 # commit it — and ignore the atomic-write temp files too.
 /admin-auth.json
 *.tmp
+
+docs/superpowers
+config-server/web/yarn.lock

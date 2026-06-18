@@ -1,0 +1,99 @@
+#!/bin/sh
+# Speculum privileged updater — runs as ROOT from speculum-update.service.
+#
+# Installs the package the unprivileged mirror staged under STAGE, but trusts
+# NOTHING it was told: it re-verifies the OpenPGP signature over SHA256SUMS
+# against the root-owned pinned key and re-checks the package's SHA-256 before
+# installing. Then it restarts the mirror service if (and only if) it is active.
+set -eu
+
+STAGE=/var/lib/speculum/update
+KEY=/opt/speculum/share/speculum-signing-key.asc
+META="$STAGE/staged.meta"
+PKG="$STAGE/staged.pkg"
+
+log()  { echo "speculum-apply-update: $*"; }
+# On failure, record a machine-readable breadcrumb the admin UI can surface,
+# drop the staged package so a stale/bad file can't be re-applied, and exit.
+fail() {
+    log "ERROR: $*" >&2
+    printf '{"state":"error","message":"%s"}\n' "$*" > "$STAGE/result.json" 2>/dev/null || true
+    rm -f "$PKG"
+    exit 1
+}
+
+[ -f "$META" ] || fail "no staged.meta"
+[ -f "$PKG" ]  || fail "no staged package"
+[ -f "$KEY" ]  || fail "pinned signing key missing"
+
+# --- parse the flat staged.meta JSON without jq -----------------------------
+field() {
+    grep -oE "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$META" | head -1 \
+        | sed -E "s/.*:[[:space:]]*\"([^\"]*)\"\$/\1/"
+}
+FILENAME="$(field filename)"
+FORMAT="$(field format)"
+VERSION="$(field version)"
+
+# --- validate the asset name (anchored; no path traversal) ------------------
+case "$FILENAME" in
+    */*|"") fail "illegal staged filename" ;;
+esac
+echo "$FILENAME" | grep -qE '^speculum[-_].+\.(deb|rpm|pkg\.tar\.(zst|xz))$' \
+    || fail "unexpected staged filename: $FILENAME"
+
+# --- re-verify signature (root, throwaway keyring) --------------------------
+[ -f "$STAGE/SHA256SUMS" ]     || fail "missing SHA256SUMS"
+[ -f "$STAGE/SHA256SUMS.asc" ] || fail "missing SHA256SUMS.asc (unsigned)"
+GNUPGHOME="$(mktemp -d)"; export GNUPGHOME
+trap 'rm -rf "$GNUPGHOME"' EXIT
+gpg --batch --quiet --import "$KEY" || fail "could not import pinned key"
+gpg --batch --verify "$STAGE/SHA256SUMS.asc" "$STAGE/SHA256SUMS" 2>/dev/null \
+    || fail "SHA256SUMS signature invalid"
+
+# --- re-verify the package checksum against the signed SHA256SUMS -----------
+# Present the package under its real asset name so the SHA256SUMS line matches.
+ln -f "$PKG" "$STAGE/$FILENAME" 2>/dev/null || cp -f "$PKG" "$STAGE/$FILENAME"
+( cd "$STAGE" && grep -E "[[:space:]][*]?$FILENAME\$" SHA256SUMS | sha256sum -c - >/dev/null 2>&1 ) \
+    || fail "checksum mismatch for $FILENAME"
+
+cleanup() {
+    rm -f "$PKG" "$STAGE/$FILENAME" "$STAGE/SHA256SUMS" "$STAGE/SHA256SUMS.asc" "$META"
+}
+
+# --- install via the matching package manager -------------------------------
+TARGET="$STAGE/$FILENAME"
+log "installing $FILENAME ($FORMAT)"
+case "$FORMAT" in
+    deb)
+        command -v apt-get >/dev/null 2>&1 || fail "apt-get not found for a deb install"
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades \
+            -o Dpkg::Options::=--force-confold "$TARGET" || fail "apt-get install failed"
+        ;;
+    rpm)
+        if   command -v dnf    >/dev/null 2>&1; then dnf install -y --allowerasing "$TARGET" || fail "dnf install failed"
+        elif command -v zypper >/dev/null 2>&1; then zypper --non-interactive install --allow-downgrade "$TARGET" || fail "zypper install failed"
+        elif command -v rpm    >/dev/null 2>&1; then rpm -Uvh --force "$TARGET" || fail "rpm install failed"
+        else fail "no dnf/zypper/rpm for an rpm install"; fi
+        ;;
+    arch)
+        command -v pacman >/dev/null 2>&1 || fail "pacman not found for an arch install"
+        pacman -U --noconfirm "$TARGET" || fail "pacman install failed"
+        ;;
+    *)
+        fail "unknown install format: $FORMAT"
+        ;;
+esac
+
+# --- restart only if the service is actually running ------------------------
+if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet speculum.service; then
+    log "restarting speculum.service"
+    cleanup
+    systemctl restart speculum.service
+else
+    # Launched manually (no service): the OLD JVM is still running the old
+    # version. Tell the still-alive admin UI to ask the user to relaunch.
+    printf '{"state":"installed","restarted":false,"version":"%s"}\n' "$VERSION" > "$STAGE/result.json"
+    cleanup
+    log "installed $VERSION (service not active — relaunch to apply)"
+fi
