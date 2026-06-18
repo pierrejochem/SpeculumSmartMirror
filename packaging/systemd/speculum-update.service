@@ -13,7 +13,9 @@ Description=Speculum one-click updater (installs a staged, verified package)
 [Service]
 Type=oneshot
 ExecStart=/opt/speculum/libexec/speculum-apply-update
-ProtectHome=read-only
+# NB: do NOT set ProtectHome — the mirror stages the verified package (and the
+# helper writes result.json + cleans up) under the mirror user's ~/.speculum,
+# so the service needs the real home, not a read-only/empty view of it.
 PrivateTmp=yes
 StandardOutput=journal
 StandardError=journal
