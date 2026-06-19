@@ -124,51 +124,31 @@ from any device on the network at `http://<pi-ip>:8080` (default password
 
 ## Run on boot (kiosk)
 
-Two options depending on whether you run a desktop session or Pi OS Lite.
-
-### A. systemd service (Pi OS Lite / headless — recommended)
-
-Every package now installs the unit to `/usr/lib/systemd/system/speculum.service`
-(deb, rpm and Arch alike) and runs `systemctl daemon-reload` on install. It uses
-[`cage`](https://github.com/cage-kiosk/cage), a minimal Wayland kiosk compositor,
-to run the mirror fullscreen on the console with no desktop environment. It is
-**not** auto-enabled — the unit ships with `User=pi` and needs `cage`, so enabling
-is a deliberate one-time step:
+The mirror runs as a **desktop-session autostart** — it launches fullscreen when
+your desktop logs in. This is the most reliable kiosk on Raspberry Pi OS: the
+session already owns the display, seat and runtime dir, so there's none of the
+seat / `XDG_RUNTIME_DIR` fragility of a bare Wayland compositor. Every package
+ships a one-shot helper:
 
 ```bash
-sudo apt install -y cage          # or: sudo pacman -S cage / sudo dnf install cage
+# run as your normal desktop user (NOT root)
+speculum-kiosk-enable        # installs a per-user XDG autostart entry
+# log out and back in (or reboot) — the mirror comes up fullscreen
 
-sudo systemctl edit --full speculum.service     # set User= to your account (e.g. pi)
-sudo systemctl enable --now speculum.service     # starts now + on every boot
-journalctl -u speculum -f                         # follow logs
+speculum-kiosk-disable       # undo
 ```
 
-(`systemctl edit --full` drops your changes in `/etc/systemd/system/` so a package
-upgrade won't overwrite them.)
+`speculum-kiosk-enable` writes `~/.config/autostart/speculum.desktop` pointing at
+`/opt/speculum/libexec/speculum-kiosk-run`, a wrapper that also disables screen
+blanking and hides the idle cursor (X11/Xwayland, best-effort) before launching
+the mirror. Enable **desktop autologin** (`raspi-config` → System Options → Boot /
+Auto Login → *Desktop Autologin*) so the kiosk comes up unattended after a reboot.
 
-### B. Desktop (X11) autostart
-
-With the full desktop session, autostart it instead:
-
-```bash
-mkdir -p ~/.config/autostart
-cat > ~/.config/autostart/speculum.desktop <<'EOF'
-[Desktop Entry]
-Type=Application
-Name=Speculum
-Exec=/opt/speculum/bin/speculum
-X-GNOME-Autostart-enabled=true
-EOF
-```
-
-Hide the cursor and disable screen blanking for a true kiosk:
-
-```bash
-sudo apt install -y unclutter
-# in ~/.config/lxsession/LXDE-pi/autostart or the autostart above:
-#   @unclutter -idle 0
-#   @xset s off; @xset -dpms; @xset s noblank
-```
+The entry is honoured by the Pi OS desktops (LXDE and the Wayland `labwc` /
+`wayfire` sessions) via the XDG autostart spec; Speculum is an X11/AWT app and
+runs through Xwayland automatically on the Wayland sessions. On a pure Wayland
+compositor the `xset`/`unclutter` hardening doesn't apply — disable blanking in
+the compositor or in `raspi-config` → Display Options instead.
 
 ## Updating modules without rebuilding the app
 
@@ -299,8 +279,8 @@ Already applied in `nativeDistributions.jvmArgs`: `-Xmx160m -XX:+UseSerialGC
 
 - **Turn off the seconds** — set the clock's `displaySeconds=false` (web admin)
   so it recomposes once a minute instead of every second. Biggest CPU win.
-- Run **64-bit Pi OS Lite** with a minimal compositor (e.g. `cage`/Wayland or
-  bare X), not the full desktop, to free RAM.
+- Use a **lightweight desktop** (LXDE, or the Wayland `labwc` session) rather than
+  a heavy one — the mirror autostarts into it.
 - Enable the KMS GL driver and give the GPU some memory (`raspi-config`) — may let
   Skiko use hardware GL instead of software.
 - Prefer a **Pi 4 (2–4 GB)**; the 3B works but is marginal.

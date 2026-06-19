@@ -1,0 +1,37 @@
+#!/bin/sh
+# Turns the current desktop session into a Speculum kiosk: installs a per-user
+# XDG autostart entry so the mirror launches fullscreen on the next login. This
+# is the supported kiosk path — it reuses the desktop session's display, seat and
+# runtime dir, so there's none of cage's seat/XDG_RUNTIME_DIR fragility.
+#
+# Undo with `speculum-kiosk-disable`. Run as your normal desktop user (NOT root).
+set -eu
+
+if [ "$(id -u)" = "0" ]; then
+    echo "Run this as your desktop user, not root (it writes to ~/.config/autostart)." >&2
+    exit 1
+fi
+
+RUN=/opt/speculum/libexec/speculum-kiosk-run
+DEST="${XDG_CONFIG_HOME:-$HOME/.config}/autostart/speculum.desktop"
+
+if [ ! -x "$RUN" ]; then
+    echo "Missing $RUN — is the speculum package installed?" >&2
+    exit 1
+fi
+
+mkdir -p "$(dirname "$DEST")"
+cat > "$DEST" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Speculum
+Comment=Smart-mirror kiosk (autostart)
+Exec=$RUN
+Icon=speculum
+Terminal=false
+X-GNOME-Autostart-enabled=true
+EOF
+
+echo "Kiosk autostart enabled: $DEST"
+echo "Log out and back in (or reboot) to start the mirror fullscreen."
+echo "Disable with: speculum-kiosk-disable"

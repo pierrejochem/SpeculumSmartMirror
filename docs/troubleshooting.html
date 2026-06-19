@@ -35,9 +35,8 @@
   <div class="toc">
     <strong>On this page</strong>
     <ul>
-      <li><a href="#kiosk-blank">Kiosk service runs but nothing appears</a></li>
-      <li><a href="#xdg">"XDG_RUNTIME_DIR is not set"</a></li>
-      <li><a href="#autologin">Autologin isn't needed for the service</a></li>
+      <li><a href="#no-autostart">Kiosk doesn't start on login</a></li>
+      <li><a href="#cursor-blank">Cursor shows / screen blanks under Wayland</a></li>
       <li><a href="#dual">Two mirrors / port 8080 in use</a></li>
       <li><a href="#update-unavailable">Updater says "install manually"</a></li>
       <li><a href="#update-check">"Couldn't check GitHub for updates"</a></li>
@@ -46,46 +45,33 @@
     </ul>
   </div>
 
-  <h2 id="kiosk-blank">Kiosk service runs but nothing appears</h2>
-  <p><strong>Symptom.</strong> <code>systemctl status speculum.service</code> shows <code>active</code> (or it starts and immediately "Deactivated successfully" after ~1&nbsp;second), but the mirror never draws on the display.</p>
-  <p><strong>Cause.</strong> <a href="https://github.com/cage-kiosk/cage"><code>cage</code></a> needs to own the seat (the GPU / <code>tty1</code>). If the Pi <strong>boots into the desktop</strong>, the desktop session already holds <code>seat0</code>, so cage gets no surface and the app exits cleanly with no output.</p>
-  <p><strong>Fix — boot to console so the kiosk owns the screen:</strong></p>
-  <pre><code>systemctl get-default                       # graphical.target = boots to desktop (the conflict)
+  <h2 id="no-autostart">Kiosk doesn't start on login</h2>
+  <p><strong>Symptom.</strong> After <code>speculum-kiosk-enable</code> and a reboot, the mirror doesn't come up fullscreen.</p>
+  <ul>
+    <li><strong>Not logged into the desktop.</strong> The autostart fires only when your <em>desktop session</em> starts. Enable desktop autologin: <code>raspi-config</code> → System Options → Boot / Auto Login → <em>Desktop Autologin</em>. A console-only boot won't run XDG autostart.</li>
+    <li><strong>Enabled as the wrong user.</strong> <code>speculum-kiosk-enable</code> writes <code>~/.config/autostart/</code> for whoever runs it — run it as your desktop user, not root. Check it exists: <code>cat ~/.config/autostart/speculum.desktop</code>.</li>
+    <li><strong>Didn't re-login.</strong> Autostart only runs at session start — log out/in or reboot after enabling.</li>
+    <li><strong>Compositor ignores XDG autostart.</strong> LXDE, labwc and wayfire on Pi OS honour it. On a minimal custom Wayland setup, add the launch to that compositor's own autostart, pointing at <code>/opt/speculum/libexec/speculum-kiosk-run</code>.</li>
+  </ul>
+  <p>Run the launcher directly from a desktop terminal to surface any error:</p>
+  <pre><code>/opt/speculum/libexec/speculum-kiosk-run</code></pre>
 
-sudo systemctl set-default multi-user.target   # boot to console, no desktop
-sudo loginctl enable-linger "$USER"            # create /run/user/&lt;uid&gt; at boot (see below)
-sudo systemctl enable speculum.service
-sudo reboot</code></pre>
-  <p>After reboot, with no desktop competing, cage takes <code>tty1</code> and the mirror renders fullscreen. Check:</p>
-  <pre><code>systemctl status speculum.service --no-pager
-journalctl -u speculum.service --since today -n 30 --no-pager
-command -v cage      # must be installed:  sudo apt install cage</code></pre>
-  <div class="note">To watch the real failure live, switch to a bare console (Ctrl+Alt+F1, log in), <code>sudo systemctl stop speculum.service</code>, then run <code>cage -s -- /opt/speculum/bin/speculum</code> and read what it prints.</div>
-
-  <h2 id="xdg">"XDG_RUNTIME_DIR is not set in the environment"</h2>
-  <p><strong>Symptom.</strong> The service crash-loops with <code>cage[…] [ERROR] XDG_RUNTIME_DIR is not set in the environment</code>.</p>
-  <p><strong>Cause.</strong> cage needs a user runtime dir (<code>/run/user/&lt;uid&gt;</code>). The unit asks pam_systemd (<code>PAMName=speculum</code>) to create it, but with no active login session there's nothing to attach to.</p>
-  <p><strong>Fix — enable lingering</strong> so systemd creates the runtime dir at boot:</p>
-  <pre><code>sudo loginctl enable-linger "$USER"
-sudo systemctl restart speculum.service</code></pre>
-  <p>If it still complains, pin it explicitly:</p>
-  <pre><code>sudo systemctl edit speculum.service
-# add:
-#   [Service]
-#   Environment=XDG_RUNTIME_DIR=/run/user/1000      # 1000 = id -u &lt;your-user&gt;
-sudo systemctl daemon-reload &amp;&amp; sudo systemctl restart speculum.service</code></pre>
-
-  <h2 id="autologin">Autologin isn't needed for the service</h2>
-  <p>For the packaged <strong><code>speculum.service</code> kiosk you do not need console autologin</strong>. The unit opens its own PAM session bound to <code>tty1</code>/<code>seat0</code> and cage takes the screen directly. Trying to also set up autologin is a <em>different, competing</em> launch model — don't mix them. If you'd rather launch the mirror from an autologin shell instead of the service, run it bare in your session and disable <code>speculum.service</code> (then updates use the session self-relaunch path).</p>
+  <h2 id="cursor-blank">Cursor shows / screen blanks under Wayland</h2>
+  <p>The kiosk wrapper disables blanking and hides the cursor with <code>xset</code> / <code>unclutter</code>, which are <strong>X11-only</strong>. On the Wayland Pi desktops (labwc / wayfire) they don't take effect. Fixes:</p>
+  <ul>
+    <li><strong>Blanking:</strong> turn off screen blanking in <code>raspi-config</code> → Display Options, or in the compositor (wayfire's <code>[idle]</code>, or <code>swayidle</code>).</li>
+    <li><strong>Cursor:</strong> install <code>unclutter</code> (<code>sudo apt install -y unclutter</code>); under Xwayland it can still hide the pointer over the mirror.</li>
+  </ul>
 
   <h2 id="dual">Two mirrors / port 8080 in use</h2>
   <p><strong>Symptom.</strong> The admin UI / <code>curl localhost:8080/api/version</code> reports an <em>old</em> version even after a successful update; <code>pgrep -af speculum</code> shows a process that predates the update.</p>
-  <p><strong>Cause.</strong> Two independent mirrors are running — e.g. a desktop-session launch <em>and</em> an enabled <code>speculum.service</code>. They both try to bind port <code>8080</code>; whichever started first holds it, and the updater may restart the other one (the one not on screen).</p>
-  <p><strong>Fix — run exactly one launcher.</strong> For a kiosk, boot to console and use only the service (<a href="#kiosk-blank">above</a>); kill any stray session mirror:</p>
+  <p><strong>Cause.</strong> Two mirrors are running at once — e.g. the kiosk autostart <em>and</em> a copy you launched by hand (or a custom systemd unit). They both try to bind port <code>8080</code>; whichever started first holds it, and the updater may restart/relaunch the one that isn't on screen.</p>
+  <p><strong>Fix — run exactly one launcher.</strong> Stop the extras, then start a single mirror:</p>
   <pre><code>pgrep -af speculum                       # see every instance
-sudo systemctl disable --now speculum.service   # …if you instead want the desktop launch
-pkill -f /opt/speculum/bin/speculum             # stop a stale session mirror
-curl -s localhost:8080/api/version              # confirm one instance, right version</code></pre>
+pkill -f /opt/speculum/bin/speculum      # stop them all
+# then start ONE — relaunch the kiosk (log out/in) or run `speculum` once
+curl -s localhost:8080/api/version       # confirm one instance, right version</code></pre>
+  <p>If you made your own systemd unit for the mirror, disable it (<code>sudo systemctl disable --now &lt;your-unit&gt;</code>) and use <code>speculum-kiosk-enable</code> instead.</p>
 
   <h2 id="update-unavailable">Updater says "install manually" / "release is unsigned"</h2>
   <p><strong>Cause.</strong> The in-app updater is <strong>fail-closed</strong>: it only installs a release whose <code>SHA256SUMS</code> carries a valid GPG signature from the key bundled in the app. If the release has no <code>SHA256SUMS.asc</code> (signing not configured in CI), it refuses and points you at the releases page. Development builds also show this.</p>
@@ -115,7 +101,7 @@ curl -s localhost:8080/api/version              # confirm one instance, right ve
 
   <h2 id="update-restart">Updated, but the screen still shows the old version</h2>
   <p><strong>Cause.</strong> The package installed, but the <em>running</em> mirror process wasn't the one that got restarted — usually the <a href="#dual">two-mirrors</a> situation, or the on-screen mirror runs a different launcher than the one the helper restarted.</p>
-  <p><strong>Fix.</strong> Settle on one launch method (<a href="#dual">above</a>). The helper restarts <code>speculum.service</code> only when it's active; a <code>--user</code> service or a bare session launch is restarted by the app itself. The installed files are already the new version, so simply relaunching the on-screen mirror once brings it to the new release.</p>
+  <p><strong>Fix.</strong> Settle on one launch method (<a href="#dual">above</a>). The helper restarts a system service only if one is active; a <code>--user</code> service or a desktop-session launch is restarted by the app itself. The installed files are already the new version, so simply relaunching the on-screen mirror once brings it to the new release.</p>
 
   <div class="btn-row" style="justify-content:flex-start;">
     <a class="btn primary" href="updating.html">How updates work →</a>

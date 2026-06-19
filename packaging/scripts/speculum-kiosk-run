@@ -1,0 +1,21 @@
+#!/bin/sh
+# Launches Speculum fullscreen for a desktop-session kiosk. Called by the XDG
+# autostart entry that `speculum-kiosk-enable` installs. Best-effort kiosk
+# hardening (disable screen blanking, hide the idle cursor) — each step is
+# guarded so it's harmless when the tool or display server isn't present.
+set -eu
+
+# X11 / Xwayland: stop DPMS + the screen-saver blanking the mirror.
+if command -v xset >/dev/null 2>&1; then
+    xset s off || true
+    xset -dpms || true
+    xset s noblank || true
+fi
+
+# Hide the mouse cursor when idle (X11 / Xwayland).
+if command -v unclutter >/dev/null 2>&1; then
+    unclutter -idle 1 &
+fi
+
+# The app itself opens fullscreen (WindowPlacement.Fullscreen).
+exec /opt/speculum/bin/speculum

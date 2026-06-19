@@ -103,38 +103,24 @@ git clone https://github.com/pierrejochem/Speculum.git && cd Speculum
   </ul>
 
   <h2 id="kiosk">Run on boot (kiosk)</h2>
-  <h3>A. systemd service (Pi OS Lite / headless — recommended)</h3>
-  <p>A ready unit ships with every package; it uses <a href="https://github.com/cage-kiosk/cage"><code>cage</code></a>, a minimal Wayland kiosk compositor.</p>
-  <pre><code>sudo apt install -y cage          # or: sudo pacman -S cage
+  <p>Speculum runs as a <strong>desktop-session autostart</strong>: the mirror launches fullscreen when your desktop logs in. This is the most reliable kiosk on Raspberry Pi OS — the session already owns the display, seat, and runtime dir, so there's none of the seat / <code>XDG_RUNTIME_DIR</code> fragility of a bare compositor. The package ships a one-shot helper:</p>
+  <pre><code># run as your normal desktop user (NOT root)
+speculum-kiosk-enable        # installs a per-user autostart entry
+# log out and back in (or reboot) — the mirror comes up fullscreen
 
-# deb/rpm ship the unit under app resources — copy it into place
-# (Arch already installs it at /usr/lib/systemd/system/speculum.service)
-sudo cp /opt/speculum/lib/app/resources/speculum.service /etc/systemd/system/
-
-sudoedit /etc/systemd/system/speculum.service   # set User= to your account (e.g. pi)
-sudo systemctl daemon-reload
-sudo systemctl enable --now speculum.service     # starts now + on every boot
-journalctl -u speculum -f                         # follow logs</code></pre>
-  <h3>B. Desktop (X11) autostart</h3>
-  <pre><code>mkdir -p ~/.config/autostart
-cat > ~/.config/autostart/speculum.desktop &lt;&lt;'EOF'
-[Desktop Entry]
-Type=Application
-Name=Speculum
-Exec=/opt/speculum/bin/speculum
-X-GNOME-Autostart-enabled=true
-EOF</code></pre>
-  <p>Hide the cursor and disable screen blanking for a true kiosk:</p>
-  <pre><code>sudo apt install -y unclutter
-# in your autostart:
-#   @unclutter -idle 0
-#   @xset s off; @xset -dpms; @xset s noblank</code></pre>
+speculum-kiosk-disable       # undo</code></pre>
+  <p><code>speculum-kiosk-enable</code> writes <code>~/.config/autostart/speculum.desktop</code> pointing at a wrapper (<code>/opt/speculum/libexec/speculum-kiosk-run</code>) that also <strong>disables screen blanking</strong> and <strong>hides the idle cursor</strong> before starting the mirror (which opens fullscreen on its own).</p>
+  <div class="note"><strong>Boot straight into the kiosk.</strong> The autostart fires when the desktop session starts, so enable desktop autologin — <code>raspi-config</code> → <em>System Options → Boot / Auto Login → Desktop Autologin</em> — and the mirror appears unattended after a reboot.</div>
+  <p>The autostart entry is honoured by the Pi OS desktops — LXDE and the Wayland <a href="https://labwc.github.io/">labwc</a> / <a href="https://github.com/WayfireWM/wayfire">wayfire</a> sessions — via the XDG autostart spec. Speculum is an X11/AWT app and runs through Xwayland automatically on the Wayland sessions.</p>
+  <h3>Cursor &amp; blanking on Wayland</h3>
+  <p>The wrapper's <code>xset</code> / <code>unclutter</code> hardening is X11-only (it works under Xwayland for the cursor). On a pure Wayland compositor, disable blanking in the compositor instead — wayfire's <code>[idle]</code> settings, or <code>swayidle</code> — or just turn the Pi's screen blanking off in <code>raspi-config</code> → <em>Display Options</em>. Install <code>unclutter</code> for cursor hiding: <code>sudo apt install -y unclutter</code>.</p>
+  <div class="note"><strong>One launcher only.</strong> Don't also run the mirror by hand or as a separate service — two instances fight over port <code>8080</code>. See <a href="troubleshooting.html#dual">Troubleshooting → two mirrors</a>.</div>
 
   <h2 id="lowpower">Low-power tuning (Pi 3B and similar)</h2>
   <p>Measured idle: ~45 MB live heap, ~390 MB RSS with default sizing. On a 1 GB Pi 3B that's tight, and the VideoCore IV GPU has weak desktop-OpenGL support, so Compose/Skiko likely renders in <strong>software</strong> — fine for static content, not smooth animation.</p>
   <ul>
     <li><strong>Turn off seconds</strong> — set the clock's <code>displaySeconds=false</code> (web admin) so it recomposes once a minute. Biggest CPU win.</li>
-    <li>Run <strong>64-bit Pi OS Lite</strong> with a minimal compositor (<code>cage</code>/Wayland or bare X), not the full desktop.</li>
+    <li>Use a <strong>lightweight desktop</strong> (LXDE, or the Wayland labwc session) rather than a heavy one — the mirror autostarts into it.</li>
     <li>Enable the KMS GL driver and give the GPU memory (<code>raspi-config</code>) — may let Skiko use hardware GL.</li>
     <li>Prefer a <strong>Pi 4 (2–4 GB)</strong>; the 3B works but is marginal.</li>
   </ul>

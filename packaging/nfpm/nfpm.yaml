@@ -57,17 +57,27 @@ contents:
     dst: /usr/bin/speculum
     type: symlink
 
-  # Kiosk systemd unit at the proper system path (enable manually). Not a
-  # conffile: it's a vendor unit under /usr/lib, so upgrades should refresh it;
-  # operators override via `systemctl edit --full` (writes to /etc).
-  - src: packaging/systemd/speculum.service
-    dst: /usr/lib/systemd/system/speculum.service
-
-  # Minimal PAM stack the unit's PAMName=speculum references; just enough for
-  # pam_systemd to set up XDG_RUNTIME_DIR (cage needs it).
-  - src: packaging/pam/speculum
-    dst: /etc/pam.d/speculum
-    type: config|noreplace
+  # Desktop-session kiosk helpers. `speculum-kiosk-enable` installs a per-user
+  # XDG autostart entry that launches the mirror fullscreen via the run wrapper
+  # (which also disables blanking + hides the cursor); `-disable` removes it.
+  - src: packaging/scripts/speculum-kiosk-run
+    dst: /opt/speculum/libexec/speculum-kiosk-run
+    file_info:
+      mode: 0755
+  - src: packaging/scripts/speculum-kiosk-enable
+    dst: /opt/speculum/libexec/speculum-kiosk-enable
+    file_info:
+      mode: 0755
+  - src: packaging/scripts/speculum-kiosk-disable
+    dst: /opt/speculum/libexec/speculum-kiosk-disable
+    file_info:
+      mode: 0755
+  - src: /opt/speculum/libexec/speculum-kiosk-enable
+    dst: /usr/bin/speculum-kiosk-enable
+    type: symlink
+  - src: /opt/speculum/libexec/speculum-kiosk-disable
+    dst: /usr/bin/speculum-kiosk-disable
+    type: symlink
 
   - src: packaging/arch/speculum.desktop
     dst: /usr/share/applications/speculum.desktop
@@ -76,9 +86,9 @@ contents:
     dst: /usr/share/icons/hicolor/512x512/apps/speculum.png
 
   # In-app one-click updater. The root oneshot unit installs a staged, verified
-  # package; the polkit rule lets ONLY user `pi` start that one unit; the helper
-  # is the privileged install script; KEYS is the pinned signing key the helper
-  # verifies releases against (root-owned, not user-writable).
+  # package; the polkit rule lets any active local session start that one unit;
+  # the helper is the privileged install script; KEYS is the pinned signing key
+  # the helper verifies releases against (root-owned, not user-writable).
   - src: packaging/systemd/speculum-update.service
     dst: /usr/lib/systemd/system/speculum-update.service
   - src: packaging/polkit/org.speculum.update.rules

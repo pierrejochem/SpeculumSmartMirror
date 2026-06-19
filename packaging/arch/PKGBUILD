@@ -19,8 +19,7 @@ license=('MIT')
 depends=('fontconfig' 'freetype2' 'libx11' 'libxext' 'libxrender' 'libxtst' 'libxi')
 makedepends=('jdk17-openjdk' 'nodejs' 'npm' 'git')
 options=(!strip)  # never strip the bundled JRE / Skiko natives
-backup=('etc/pam.d/speculum')  # preserve local edits to the PAM stack on upgrade
-install=speculum.install        # creates the updater staging dir post-install
+install=speculum.install        # daemon-reload for the updater unit post-install
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
         "speculum.desktop")
 sha256sums=('SKIP'
@@ -54,18 +53,23 @@ package() {
     "$pkgdir/usr/share/icons/hicolor/512x512/apps/speculum.png"
   install -Dm644 "$srcdir/speculum.desktop" \
     "$pkgdir/usr/share/applications/speculum.desktop"
-  # Kiosk autostart unit (enable with: systemctl enable --now speculum.service).
-  install -Dm644 packaging/systemd/speculum.service \
-    "$pkgdir/usr/lib/systemd/system/speculum.service"
-  # Minimal PAM stack the unit's PAMName=speculum references (sets up
-  # XDG_RUNTIME_DIR via pam_systemd; cage needs it).
-  install -Dm644 packaging/pam/speculum \
-    "$pkgdir/etc/pam.d/speculum"
   install -Dm644 LICENSE.md "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 
-  # In-app one-click updater: root oneshot unit, polkit rule (authorizes only
-  # user `pi` to start it), the privileged install helper, and the pinned
-  # signing key the helper verifies releases against.
+  # Desktop-session kiosk helpers: `speculum-kiosk-enable` installs a per-user
+  # XDG autostart entry that runs the mirror fullscreen via the run wrapper;
+  # `-disable` removes it. Symlink the two user-facing ones onto PATH.
+  install -Dm755 packaging/scripts/speculum-kiosk-run \
+    "$pkgdir/opt/speculum/libexec/speculum-kiosk-run"
+  install -Dm755 packaging/scripts/speculum-kiosk-enable \
+    "$pkgdir/opt/speculum/libexec/speculum-kiosk-enable"
+  install -Dm755 packaging/scripts/speculum-kiosk-disable \
+    "$pkgdir/opt/speculum/libexec/speculum-kiosk-disable"
+  ln -s /opt/speculum/libexec/speculum-kiosk-enable "$pkgdir/usr/bin/speculum-kiosk-enable"
+  ln -s /opt/speculum/libexec/speculum-kiosk-disable "$pkgdir/usr/bin/speculum-kiosk-disable"
+
+  # In-app one-click updater: root oneshot unit, polkit rule (authorizes any
+  # active local session to start it), the privileged install helper, and the
+  # pinned signing key the helper verifies releases against.
   install -Dm644 packaging/systemd/speculum-update.service \
     "$pkgdir/usr/lib/systemd/system/speculum-update.service"
   install -Dm644 packaging/polkit/org.speculum.update.rules \
