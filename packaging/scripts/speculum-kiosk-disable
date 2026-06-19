@@ -1,0 +1,14 @@
+#!/bin/sh
+# Removes the Speculum desktop-session kiosk autostart entry that
+# `speculum-kiosk-enable` installed. Run as your normal desktop user.
+set -eu
+
+DEST="${XDG_CONFIG_HOME:-$HOME/.config}/autostart/speculum.desktop"
+
+if [ -e "$DEST" ]; then
+    rm -f "$DEST"
+    echo "Kiosk autostart disabled (removed $DEST)."
+    echo "The mirror will no longer start on login. A running mirror keeps going until you close it."
+else
+    echo "No kiosk autostart entry found at $DEST — nothing to do."
+fi

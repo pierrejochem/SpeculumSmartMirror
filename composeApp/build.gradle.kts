@@ -114,10 +114,10 @@ val bundleWeb by tasks.registering(Copy::class) {
     into(layout.projectDirectory.dir("app-resources/common/web"))
 }
 
-// The kiosk systemd unit is no longer bundled into the app resources: all three
-// packages install it to the proper system path themselves — nfpm for .deb/.rpm
-// (packaging/nfpm/nfpm.yaml) and the PKGBUILD for Arch — straight from
-// packaging/systemd/speculum.service.
+// The kiosk now runs as a desktop-session autostart (see speculum-kiosk-enable),
+// not a bundled systemd unit. The packages still install the in-app updater unit
+// (speculum-update.service) directly — nfpm for .deb/.rpm and the PKGBUILD for
+// Arch — from packaging/systemd/.
 
 // Bundle the pinned signing public key (single source: repo-root KEYS) so the
 // in-app updater can verify release signatures (app-side check). The privileged

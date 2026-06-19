@@ -77,13 +77,13 @@
   <table>
     <thead><tr><th>How you run the mirror</th><th>How it's replaced</th></tr></thead>
     <tbody>
-      <tr><td>System kiosk service (<code>speculum.service</code>, active)</td><td>The root helper runs <code>systemctl restart speculum.service</code>.</td></tr>
+      <tr><td>Desktop-session autostart (the default kiosk)</td><td>The app relaunches the new binary in your session, then exits the old one.</td></tr>
       <tr><td>A <code>--user</code> systemd service</td><td>The app restarts its own user unit (<code>systemctl --user restart …</code>).</td></tr>
-      <tr><td>A desktop / login session (bare launch)</td><td>The app relaunches the new binary in your session, then exits the old one.</td></tr>
+      <tr><td>A custom system service you created</td><td>The root helper restarts it if it's active.</td></tr>
     </tbody>
   </table>
   </div>
-  <div class="warn"><strong>Run one launcher, not two.</strong> If both a desktop-session mirror <em>and</em> <code>speculum.service</code> are running, they fight over port <code>8080</code> and the updater may restart the one that isn't on screen. Pick a single launch method — see <a href="troubleshooting.html#dual">Troubleshooting → two mirrors</a>.</div>
+  <div class="warn"><strong>Run one launcher, not two.</strong> If two mirrors run at once (e.g. the kiosk autostart plus a hand-launched copy), they fight over port <code>8080</code> and the updater may restart the one that isn't on screen. Pick a single launch method — see <a href="troubleshooting.html#dual">Troubleshooting → two mirrors</a>.</div>
 
   <h2 id="security">Security model</h2>
   <ul>
@@ -109,9 +109,8 @@ sudo apt install ./speculum_&lt;version&gt;_arm64.deb      # Debian / Raspberry 
 sudo dnf install ./speculum_&lt;version&gt;_arm64.rpm      # Fedora / RHEL
 sudo pacman -U ./speculum-&lt;version&gt;-1-aarch64.pkg.tar.zst   # Arch
 
-# then restart the mirror:
-sudo systemctl restart speculum.service              # kiosk service
-# …or just relaunch it however you started it</code></pre>
+# then restart the mirror — relaunch the kiosk (log out/in),
+# or just relaunch it however you started it</code></pre>
 
   <div class="btn-row" style="justify-content:flex-start;">
     <a class="btn primary" href="https://github.com/pierrejochem/SpeculumSmartMirror/releases">Releases ↗</a>

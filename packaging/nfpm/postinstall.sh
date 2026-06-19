@@ -26,13 +26,9 @@ fi
 # The updater stages packages under the mirror user's own ~/.speculum/update at
 # runtime — no root-owned staging dir to provision here.
 
-# Not auto-enabled: speculum.service ships with User=pi and runs a fullscreen
-# Wayland kiosk via cage, so it needs the operator to set the display user and
-# install cage first. Point them at the one-time setup.
 cat <<'EOF'
 Speculum installed. Run it now with:  speculum
-Kiosk on boot (Pi OS Lite / headless):
-  sudo apt install cage              # or: sudo dnf install cage
-  sudo systemctl edit --full speculum.service   # set User= to your account
-  sudo systemctl enable --now speculum.service
+Kiosk on desktop login (autostart fullscreen):
+  speculum-kiosk-enable        # run as your desktop user, then log out/in
+  speculum-kiosk-disable       # to undo
 EOF
