@@ -43,7 +43,7 @@ jobs:
           - { arch: amd64, runner: ubuntu-latest }
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.version.outputs.v }}
 
@@ -116,7 +116,7 @@ jobs:
     needs: version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.version.outputs.v }}
           fetch-depth: 0  # full history + tags for the changelog
@@ -145,7 +145,7 @@ jobs:
           - { arch: x86_64, runner: ubuntu-latest, image: "archlinux:base-devel" }
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.version.outputs.v }}
 
@@ -199,7 +199,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.version.outputs.v }}
 
@@ -243,7 +243,7 @@ jobs:
       # Need the committed public key (/KEYS) to self-check the signing key.
       # Checkout BEFORE download-artifact (checkout cleans the workspace).
       - name: Check out (for the pinned public key)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.version.outputs.v }}
 
