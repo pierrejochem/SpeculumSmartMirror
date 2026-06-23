@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Update runbook — Speculum</title>
+<meta name="description" content="Operator runbook for applying a Speculum update from the command line: how to relaunch the kiosk to activate a staged version without rebooting, plus the reboot fallback.">
+<link rel="icon" href="assets/img/speculum-icon.svg">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html"><img src="assets/img/speculum-icon.svg" alt=""> Speculum</a>
+    <button class="menu-toggle" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('open')">☰</button>
+    <nav class="nav-links" id="nav">
+      <a href="index.html">Home</a>
+      <a href="getting-started.html">Getting Started</a>
+      <a href="showcase.html">Showcase</a>
+      <details class="nav-group">
+        <summary>Docs</summary>
+        <div class="nav-menu">
+          <a href="architecture.html">Architecture</a>
+          <a href="api-reference.html">API Reference</a>
+          <a href="user-guide.html">User Guide</a>
+        </div>
+      </details>
+      <details class="nav-group active">
+        <summary>Operations</summary>
+        <div class="nav-menu">
+          <a href="updating.html">Updating</a>
+          <a href="troubleshooting.html">Troubleshooting</a>
+          <a href="runbook.html" class="active">Runbook</a>
+        </div>
+      </details>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p class="kicker">Update runbook</p>
+  <h1>Relaunch the kiosk to apply a staged update</h1>
+  <p class="lead">When you apply an update from the command line, the new version lands on disk but the mirror keeps running the old one until it relaunches. This runbook activates the staged version over SSH — without rebooting the Pi.</p>
+
+  <div class="note">For the normal path — the one-click updater that downloads, verifies, installs <em>and</em> restarts on its own — see <a href="updating.html">Updating</a>. This runbook is for the manual / CLI path, where you are responsible for the relaunch.</div>
+
+  <div class="toc">
+    <strong>On this page</strong>
+    <ul>
+      <li><a href="#when">When you need this</a></li>
+      <li><a href="#why">Why a relaunch is needed</a></li>
+      <li><a href="#noreboot">Relaunch without rebooting</a></li>
+      <li><a href="#verify">Verify it took</a></li>
+      <li><a href="#reboot">Reboot fallback</a></li>
+      <li><a href="#trouble">If it doesn't work</a></li>
+    </ul>
+  </div>
+
+  <h2 id="when">When you need this</h2>
+  <p>You applied an update by hand (or a CLI helper did) and saw a message like:</p>
+  <pre><code>speculum-apply-update: installed 1.1.0 (service not active — relaunch to apply)</code></pre>
+  <p>The package is installed, but the on-screen mirror is still the previous version. You want it on the new version now, without waiting for a reboot or physically logging the Pi out and back in.</p>
+
+  <h2 id="why">Why a relaunch is needed</h2>
+  <p>The default kiosk is a <strong>desktop-session autostart app</strong>, not a systemd service. An XDG autostart entry (installed by <code>speculum-kiosk-enable</code>) launches <code>/opt/speculum/bin/speculum</code> when the desktop session logs in. That entry only fires <em>at login</em> — so a running mirror keeps the old binary in memory until the process is replaced. Installing a new package on disk does not touch the live process.</p>
+  <div class="note">A JVM process keeps the version it booted with. Updating files on disk has no effect until the process restarts — the screen shows the old build until you relaunch it.</div>
+
+  <h2 id="noreboot">Relaunch without rebooting</h2>
+  <p>This one-liner finds the running mirror, inherits its desktop-session environment, kills it, and respawns the kiosk launcher detached so it survives the SSH disconnect. Run it from your workstation (replace <code>&lt;pi-host&gt;</code> with your Pi's SSH host):</p>
+  <pre><code>ssh &lt;pi-host&gt; 'P=$(pgrep -f /opt/speculum/bin/speculum | head -1); \
+  [ -n "$P" ] &amp;&amp; eval "$(tr "\0" "\n" &lt;/proc/$P/environ \
+    | grep -E "^(DISPLAY|WAYLAND_DISPLAY|XDG_RUNTIME_DIR|DBUS_SESSION_BUS_ADDRESS)=" \
+    | sed "s/^/export /")"; \
+  kill "$P"; sleep 2; \
+  setsid /opt/speculum/libexec/speculum-kiosk-run &lt;/dev/null &gt;/dev/null 2&gt;&amp;1 &amp;'</code></pre>
+  <p>Step by step:</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Step</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><code>pgrep -f …</code></td><td>Finds the PID of the running mirror.</td></tr>
+      <tr><td><code>tr … /proc/$P/environ</code></td><td>Reads the live process's session environment — <code>DISPLAY</code>, <code>WAYLAND_DISPLAY</code>, <code>XDG_RUNTIME_DIR</code>, <code>DBUS_SESSION_BUS_ADDRESS</code> — so the new process attaches to the same seat and display. Readable because the SSH user owns the process.</td></tr>
+      <tr><td><code>kill "$P"; sleep 2</code></td><td>Stops the old mirror and gives it a moment to release port <code>8080</code>.</td></tr>
+      <tr><td><code>setsid … &amp;</code></td><td>Launches <code>speculum-kiosk-run</code> in a new session, detached from SSH, so it keeps running after you log out.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="warn"><strong>Run it interactively.</strong> Non-interactive / <code>BatchMode</code> SSH may be refused (publickey/password). Run from a real terminal where you can authenticate.</div>
+
+  <h2 id="verify">Verify it took</h2>
+  <p>Confirm the mirror is running again on the new binary:</p>
+  <pre><code>ssh &lt;pi-host&gt; 'pgrep -a -f /opt/speculum/bin/speculum'</code></pre>
+  <p>You should see one process. The mirror on screen — and the version badge in the web admin header — should now show the new release.</p>
+
+  <h2 id="reboot">Reboot fallback</h2>
+  <p>If the one-liner reports no PID (nobody is logged into the desktop session, so there's no session environment to inherit), just reboot — autostart relaunches the mirror fresh on the new version at login:</p>
+  <pre><code>ssh -t &lt;pi-host&gt; 'sudo systemctl reboot'</code></pre>
+  <p>Logging the desktop session out and back in works too — it's the same code path the autostart entry uses.</p>
+
+  <h2 id="trouble">If it doesn't work</h2>
+  <ul>
+    <li><strong>Empty <code>$P</code> / nothing respawns</strong> — no desktop session is logged in. Use the <a href="#reboot">reboot fallback</a>.</li>
+    <li><strong>Mirror starts then exits, or port <code>8080</code> is busy</strong> — a second copy is already running. See <a href="troubleshooting.html#dual">Troubleshooting → two mirrors</a>.</li>
+    <li><strong>Still the old version on screen</strong> — confirm the package actually installed (<code>dpkg -l speculum</code> / <code>pacman -Q speculum</code> / <code>rpm -q speculum</code>) before relaunching.</li>
+    <li><strong>SSH refused</strong> — see the <a href="#noreboot">interactive note</a> above; authenticate from a real terminal.</li>
+  </ul>
+
+  <div class="btn-row" style="justify-content:flex-start;">
+    <a class="btn primary" href="updating.html">← Updating</a>
+    <a class="btn" href="troubleshooting.html">Troubleshooting →</a>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="footer-inner">
+    <span>Speculum — modular smart-mirror dashboard.</span>
+    <span class="footer-links">
+      <a href="https://github.com/pierrejochem/SpeculumSmartMirror">GitHub</a>
+      <a href="user-guide.html">User Guide</a>
+      <a href="troubleshooting.html">Troubleshooting</a>
+    </span>
+  </div>
+</footer>
+</body>
+</html>
