@@ -9,7 +9,6 @@ plugins {
 tasks.register("deployModules") {
     description = "Builds all default modules and copies their JARs into the app's `plugins/` folder for runtime loading."
     dependsOn(
-        ":modules:example-module:deployToModules",
         ":modules:clock-module:deployToModules",
         ":modules:weather-module:deployToModules",
         ":modules:calendar-module:deployToModules",

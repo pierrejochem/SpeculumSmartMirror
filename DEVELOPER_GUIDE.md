@@ -3,8 +3,8 @@
 This is a Compose for Desktop (JVM) port of MagicMirror².
 Each feature on screen is a **module**. This guide shows how to add one.
 
-The fastest path: copy
-[`ExampleModule.kt`](composeApp/src/main/kotlin/org/speculum/modules/example/ExampleModule.kt),
+The fastest path: clone the standalone reference module at
+[`pierrejochem/SpeculumExampleModule`](https://github.com/pierrejochem/SpeculumExampleModule),
 rename it, register it, add a config entry. The rest of this doc explains each piece.
 
 ---
@@ -35,9 +35,11 @@ ConfigLoader ──► MirrorConfig ──► MirrorEngine.boot()
 
 **All default modules ship as external JAR plugins** — each is its own Gradle
 subproject under `modules/` (`clock-module`, `weather-module`, `calendar-module`,
-`compliments-module`, `newsfeed-module`, plus `example-module`). At build time
+`compliments-module`, `newsfeed-module`). At build time
 each JAR is copied into `plugins/`; at startup the desktop app discovers them
 there via reflection. This is the recommended path — start from *External modules*.
+A fully-commented reference module lives in its own repo at
+[`pierrejochem/SpeculumExampleModule`](https://github.com/pierrejochem/SpeculumExampleModule).
 
 There are **two ways to add a module**:
 1. **External JAR plugin** (recommended, desktop) — a standalone Gradle subproject built to a JAR in `plugins/`, discovered at runtime. (See *External modules*.)
@@ -250,8 +252,11 @@ in `composeApp/build.gradle.kts`). See `Theme.kt`'s `robotoFamily()`.
 ## External modules (JAR plugins)
 
 An external module is a separate Gradle subproject built to a JAR and loaded at
-runtime — no app rebuild, no edit to `ConfigLoader`. The reference is
-[`:modules:example-module`](modules/example-module).
+runtime — no app rebuild, no edit to `ConfigLoader`. The reference is the
+standalone [`pierrejochem/SpeculumExampleModule`](https://github.com/pierrejochem/SpeculumExampleModule)
+repo, which compiles against the **published** `mirror-api` (see *Building
+outside this repo*). The default modules under `modules/` are built the same way
+but use `compileOnly(project(":mirror-api"))` since the API is in-tree.
 
 How it works:
 
@@ -283,8 +288,9 @@ modules/<name>-module/
                                             # one line: the factory's FQN
 ```
 
-`build.gradle.kts` (copy from `example-module`; add `kotlinSerialization` too if
-you use `@Serializable`):
+`build.gradle.kts` (copy from any module under `modules/`, or from the standalone
+[`SpeculumExampleModule`](https://github.com/pierrejochem/SpeculumExampleModule);
+add `kotlinSerialization` too if you use `@Serializable`):
 
 ```kotlin
 plugins { alias(libs.plugins.kotlinJvm); alias(libs.plugins.composeMultiplatform); alias(libs.plugins.composeCompiler) }
@@ -332,16 +338,19 @@ dependency for `compileOnly("org.speculum:mirror-api:<version>")` and add the
 GitHub Packages repository. See *Using `mirror-api` as a dependency* in the
 [README](README.md) for the repository block and auth.
 
+The standalone [`pierrejochem/SpeculumExampleModule`](https://github.com/pierrejochem/SpeculumExampleModule)
+repo is exactly this: a complete, independently buildable example wired up to the
+published API. Clone it as the starting point for an out-of-tree module.
+
 ## The reference example
 
-[`ExampleModule.kt`](modules/example-module/src/main/kotlin/org/speculum/modules/example/ExampleModule.kt)
-+ [`ExampleModuleFactory.kt`](modules/example-module/src/main/kotlin/org/speculum/modules/example/ExampleModuleFactory.kt)
-demonstrate the whole flow: config reading, `start()`, `refresh()`,
-`onNotification()`, state, `Content()`, and packaging as a discoverable JAR.
-Run the app and it appears at `top_center` showing a live refresh counter and
-the last notification — loaded entirely from `plugins/example-module.jar`.
-The default modules (`clock`, `weather`, `calendar`, `compliments`, `newsfeed`)
-are built the exact same way — browse them under `modules/`.
+[`SpeculumExampleModule`](https://github.com/pierrejochem/SpeculumExampleModule)
+(`ExampleModule.kt` + `ExampleModuleFactory.kt`) demonstrates the whole flow:
+config reading, `start()`, `refresh()`, `onNotification()`, state, `Content()`,
+and packaging as a discoverable JAR. Build it, drop the JAR into `plugins/`, run
+the app, and it appears at `top_center` showing a live refresh counter and the
+last notification. The default modules (`clock`, `weather`, `calendar`,
+`compliments`, `newsfeed`) are built the same way — browse them under `modules/`.
 
 ---
 
