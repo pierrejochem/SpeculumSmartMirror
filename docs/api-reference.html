@@ -262,7 +262,7 @@ interface NotificationListener {
   <p class="muted"><code>POST /api/password</code> → <code>401</code> if <code>currentPassword</code> wrong, <code>400</code> if <code>newPassword</code> &lt; 4 chars. Changing the password does not revoke existing tokens — they expire on their own TTL.</p>
 
   <h2 id="dependency">Use <code>mirror-api</code> as a dependency</h2>
-  <p>For a module developed in its own repo, depend on the published API instead of <code>project(":mirror-api")</code>. It's released to <strong>GitHub Packages</strong> as <code>org.speculum:mirror-api</code> on every <code>v*</code> tag (version = tag without the <code>v</code>; latest published <strong>0.0.1</strong>). The package is public, but GitHub's Maven registry still requires a token with <code>read:packages</code>.</p>
+  <p>For a module developed in its own repo, depend on the published API instead of <code>project(":mirror-api")</code>. It's released to <strong>GitHub Packages</strong> as <code>org.speculum:mirror-api</code> on every <code>v*</code> tag (version = tag without the <code>v</code>; latest published <strong>1.3.0</strong>). The package is public, but GitHub's Maven registry still requires a token with <code>read:packages</code>.</p>
   <pre><code>repositories {
     maven {
         url = uri("https://maven.pkg.github.com/pierrejochem/SpeculumSmartMirror")
@@ -272,7 +272,7 @@ interface NotificationListener {
         }
     }
 }
-dependencies { compileOnly("org.speculum:mirror-api:0.0.1") }</code></pre>
+dependencies { compileOnly("org.speculum:mirror-api:1.3.0") }</code></pre>
   <p>Put <code>gpr.user</code> / <code>gpr.token</code> in <code>~/.gradle/gradle.properties</code>, or export <code>GITHUB_ACTOR</code> / <code>GITHUB_TOKEN</code>.</p>
 
   <div class="btn-row" style="justify-content:flex-start;">
