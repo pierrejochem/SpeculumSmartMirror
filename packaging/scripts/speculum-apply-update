@@ -22,7 +22,10 @@ resolve_stage() {
     done
     return 1
 }
-STAGE="$(resolve_stage)" || { echo "speculum-apply-update: nothing staged" >&2; exit 1; }
+# Exit 0, not 1: speculum-update.timer runs this unit every minute, so a run that
+# finds nothing staged is the normal case — not a failure worth reddening
+# `systemctl status` or filling the journal with errors.
+STAGE="$(resolve_stage)" || { echo "speculum-apply-update: nothing staged"; exit 0; }
 META="$STAGE/staged.meta"
 PKG="$STAGE/staged.pkg"
 
@@ -32,7 +35,10 @@ log()  { echo "speculum-apply-update: $*"; }
 fail() {
     log "ERROR: $*" >&2
     printf '{"state":"error","message":"%s"}\n' "$*" > "$STAGE/result.json" 2>/dev/null || true
-    rm -f "$PKG"
+    # Drop the whole staged set, not just the package: speculum-update.timer
+    # fires every minute, so a set left half-deleted would be retried (and fail)
+    # on every tick. A failed set must be re-staged anyway.
+    rm -f "$PKG" "$META" "$STAGE/SHA256SUMS" "$STAGE/SHA256SUMS.asc"
     exit 1
 }
 

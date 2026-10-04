@@ -86,11 +86,15 @@ contents:
     dst: /usr/share/icons/hicolor/512x512/apps/speculum.png
 
   # In-app one-click updater. The root oneshot unit installs a staged, verified
-  # package; the polkit rule lets any active local session start that one unit;
+  # package; the timer runs it every minute so a staged package lands with no
+  # privilege on the mirror side; the polkit rule lets an active local session
+  # start that one unit directly, as a fast path;
   # the helper is the privileged install script; KEYS is the pinned signing key
   # the helper verifies releases against (root-owned, not user-writable).
   - src: packaging/systemd/speculum-update.service
     dst: /usr/lib/systemd/system/speculum-update.service
+  - src: packaging/systemd/speculum-update.timer
+    dst: /usr/lib/systemd/system/speculum-update.timer
   - src: packaging/polkit/org.speculum.update.rules
     dst: /usr/share/polkit-1/rules.d/org.speculum.update.rules
   - src: packaging/scripts/speculum-apply-update
@@ -102,4 +106,5 @@ contents:
 
 scripts:
   postinstall: packaging/nfpm/postinstall.sh
+  preremove: packaging/nfpm/preremove.sh
   postremove: packaging/nfpm/postremove.sh

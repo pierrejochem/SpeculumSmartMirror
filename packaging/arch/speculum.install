@@ -1,5 +1,21 @@
 # Arch install scriptlet. The in-app updater stages packages under the mirror
 # user's own ~/.speculum/update at runtime, so there's no root-owned staging dir
-# to provision — just refresh systemd for the new updater unit.
-post_install() { systemctl daemon-reload >/dev/null 2>&1 || true; }
-post_upgrade() { systemctl daemon-reload >/dev/null 2>&1 || true; }
+# to provision — refresh systemd for the updater units and arm the poller that
+# applies a staged package. Without it the update depends on polkit, which only
+# authorizes a local ACTIVE session: no good headless, under a --user unit, or
+# over SSH.
+_arm() {
+    systemctl daemon-reload >/dev/null 2>&1 || true
+    systemctl enable --now speculum-update.timer >/dev/null 2>&1 || true
+}
+
+post_install() { _arm; }
+post_upgrade() { _arm; }
+
+# Disarm while the unit file still exists; disabling afterwards cannot clean up
+# and would leave a dangling symlink in timers.target.wants.
+pre_remove() {
+    systemctl disable --now speculum-update.timer >/dev/null 2>&1 || true
+}
+
+post_remove() { systemctl daemon-reload >/dev/null 2>&1 || true; }

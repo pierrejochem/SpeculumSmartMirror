@@ -1,0 +1,31 @@
+# Root-side poller that applies a staged Speculum update without the mirror
+# holding any privilege at all.
+#
+# The unprivileged mirror writes the verified package into its OWN
+# ~/.speculum/update (always writable, no shared group, no root-owned spool) and
+# writes `staged.meta` LAST, only after the signature and checksum pass. This
+# timer runs the root oneshot every minute; speculum-apply-update looks for a
+# staged package, exits 0 immediately when there is none, and re-verifies
+# everything itself before installing.
+#
+# Why not polkit alone: `systemctl start speculum-update.service` is authorized
+# only for a local, ACTIVE session. That breaks whenever the mirror runs
+# headless, under a --user unit, over SSH, or after a VT switch — and it fails
+# silently, since a refused start leaves no journal entry. The polkit rule stays
+# as a fast path; this timer is what makes the update land regardless.
+#
+# Why not a .path unit: systemd watches the deepest non-glob prefix of the
+# pattern, so PathExistsGlob=/home/*/.speculum/update/staged.meta only reacts to
+# changes in /home itself — creating a file inside an existing update/ directory
+# raises no event, and the unit never triggers. Verified on systemd 259.
+[Unit]
+Description=Apply a staged, verified Speculum package
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=60
+AccuracySec=10s
+Unit=speculum-update.service
+
+[Install]
+WantedBy=timers.target
