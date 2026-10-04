@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 This file is generated from [Conventional Commits](https://www.conventionalcommits.org).
+## 1.5.2 — 2026-10-04
+
+### Documentation
+- Update for v1.5.1
+
 ## 1.5.1 — 2026-10-04
 
 ### Documentation
