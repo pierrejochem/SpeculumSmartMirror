@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here.
 This file is generated from [Conventional Commits](https://www.conventionalcommits.org).
+## 1.5.0 — 2026-10-04
+
+### Features
+- Apply staged updates from a root timer, not a polkit grant
+
+### Bug Fixes
+- Refuse a signed downgrade unless root opts in
+- Report why the privileged trigger failed, and never hang in restarting
+
+### Documentation
+- Update for v1.4.1
+
 ## 1.4.1 — 2026-10-04
 
 ### Bug Fixes
