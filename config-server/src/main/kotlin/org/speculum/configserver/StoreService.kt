@@ -21,6 +21,8 @@ data class StorePluginView(
     val author: String,
     val homepage: String,
     val moduleName: String,
+    /** Catalog-declared module version; empty when the entry doesn't list one. */
+    val moduleVersion: String = "",
     val installed: Boolean,
     val enabled: Boolean,
 )
@@ -64,6 +66,7 @@ object StoreService {
                 author = p.author,
                 homepage = p.homepage,
                 moduleName = p.moduleName,
+                moduleVersion = p.moduleVersion,
                 installed = File(userDir(), p.jarName).isFile,
                 enabled = p.moduleName in enabledNames,
             )

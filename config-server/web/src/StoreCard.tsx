@@ -48,6 +48,11 @@ export function StoreCard({ onChanged }: { onChanged: () => void }) {
             <div className="store-meta">
               <div className="store-title">
                 <strong>{p.name}</strong>
+                {p.moduleVersion && (
+                  <span className="store-ver" title="Version offered by the catalog">
+                    v{p.moduleVersion}
+                  </span>
+                )}
                 {p.installed && <span className="pill">Installed</span>}
                 {p.enabled && <span className="pill pill-on">Enabled</span>}
               </div>

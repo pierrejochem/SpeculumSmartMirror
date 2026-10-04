@@ -395,8 +395,12 @@ The store reads `store/catalog.json` from this repo. To list a module:
 2. Open a PR adding an entry to [`store/catalog.json`](store/catalog.json):
    `id`, `name`, `description`, `author`, `homepage`, `moduleName` (the
    `ModuleFactory.name`), `jarName` (the file written to disk), `downloadUrl`,
-   and optionally `sha256` (a lowercase hex digest — the download is verified
+   optionally `moduleVersion` (shown next to the name in the store UI), and
+   optionally `sha256` (a lowercase hex digest — the download is verified
    against it and rejected on mismatch).
+
+Keep `downloadUrl`, `moduleVersion`, and `sha256` in step whenever you publish a
+new module release — a stale `sha256` makes the install fail the checksum check.
 
 A newly installed JAR renders on the mirror after the next restart (plugins are
 scanned once at boot).

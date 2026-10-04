@@ -673,6 +673,7 @@ input, select, textarea { max-width: 100%; min-width: 0; }
 .store-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .store-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .store-actions { margin-left: auto; flex-shrink: 0; }
+.store-ver { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: var(--faint); }
 .pill {
   font-size: 11px;
   padding: 2px 8px;
