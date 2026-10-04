@@ -21,6 +21,8 @@ data class StorePlugin(
     val moduleName: String,
     /** Filename written into the user plugins dir (e.g. `example-module.jar`). */
     val jarName: String,
+    /** Version of the module this entry offers, shown in the store UI. Empty when unlisted. */
+    val moduleVersion: String = "",
     /** `browser_download_url` of the release asset to fetch. */
     val downloadUrl: String,
     /** Optional lowercase hex SHA-256; when present the download is verified against it. */

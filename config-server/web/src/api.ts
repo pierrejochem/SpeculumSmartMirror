@@ -71,6 +71,7 @@ export interface StorePlugin {
   author: string;
   homepage: string;
   moduleName: string;
+  moduleVersion: string;
   installed: boolean;
   enabled: boolean;
 }
