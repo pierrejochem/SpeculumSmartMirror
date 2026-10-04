@@ -37,7 +37,9 @@ then [`nfpm`](https://nfpm.goreleaser.com) wraps that image into a `.deb` and a
 (so the launcher is on `PATH`), installs the systemd units at their proper paths
 (`speculum-update.service` plus `speculum-update.timer`, which the post-install
 script enables so the in-app updater can apply a staged package without the
-mirror holding any privilege), and runs the post-install scripts. This is the same app-image the Arch `PKGBUILD`
+mirror holding any privilege), and runs the post-install scripts. That updater
+refuses to install a package older than the one on disk; `touch
+/opt/speculum/.allow-downgrade` as root to permit a deliberate downgrade. This is the same app-image the Arch `PKGBUILD`
 wraps, so all three formats behave alike.
 
 ```bash
