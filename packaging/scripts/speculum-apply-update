@@ -12,13 +12,19 @@ KEY=/opt/speculum/share/speculum-signing-key.asc
 # The unprivileged mirror wrote a verified package into its OWN
 # ~/.speculum/update (always writable, no shared group needed). Find it: prefer
 # the configured service user's home, then scan home dirs — exactly one holds a
-# staged.pkg. We trust nothing here beyond "a package is staged"; the signature
+# staged.meta. We trust nothing here beyond "a package is staged"; the signature
 # is re-verified below regardless of who staged it.
+#
+# Key on staged.meta, NOT staged.pkg: the mirror writes the meta LAST, once the
+# package is downloaded and verified, so it is the only marker that means the set
+# is complete. Keying on the package matched a download still in flight, and
+# since fail() clears a broken set, a timer tick landing mid-download deleted the
+# mirror's own partial download out from under it.
 resolve_stage() {
     _u="$(systemctl show -p User --value speculum.service 2>/dev/null || true)"
     _h="$(getent passwd "$_u" 2>/dev/null | cut -d: -f6 || true)"
     for d in "$_h" /root /home/*; do
-        [ -n "$d" ] && [ -f "$d/.speculum/update/staged.pkg" ] && { printf '%s' "$d/.speculum/update"; return 0; }
+        [ -n "$d" ] && [ -f "$d/.speculum/update/staged.meta" ] && { printf '%s' "$d/.speculum/update"; return 0; }
     done
     return 1
 }

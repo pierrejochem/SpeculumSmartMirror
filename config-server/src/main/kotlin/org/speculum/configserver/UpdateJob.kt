@@ -90,14 +90,25 @@ object UpdateJob {
                 return fail("Not enough disk space for the update.")
 
             val pkgFile = File(staging, "staged.pkg")
+            // Download under a .part name and rename once complete. The root
+            // helper keys on staged.meta, written last, so this is belt and
+            // braces — but it also means a half-written staged.pkg never exists
+            // for anything else to trip over, and the rename is atomic within
+            // the directory.
+            val partFile = File(staging, "staged.pkg.part")
             val sumsFile = File(staging, "SHA256SUMS")
             val sigFile = File(staging, "SHA256SUMS.asc")
             File(staging, "result.json").delete()
+            partFile.delete()
 
             val dl = Downloader(dlHttp)
             message = "Downloading ${pkgAsset.name}…"
-            dl.download(pkgAsset.downloadUrl, pkgFile) { read, total ->
+            dl.download(pkgAsset.downloadUrl, partFile) { read, total ->
                 pct = total?.takeIf { it > 0 }?.let { (read * 100 / it).toInt() }
+            }
+            if (!partFile.renameTo(pkgFile)) {
+                partFile.delete()
+                return fail("Couldn't move the downloaded package into place.")
             }
             dl.download(sumsAsset.downloadUrl, sumsFile)
             dl.download(sigAsset.downloadUrl, sigFile)
