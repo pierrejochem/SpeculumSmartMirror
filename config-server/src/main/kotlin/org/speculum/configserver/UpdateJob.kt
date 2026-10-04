@@ -119,7 +119,7 @@ object UpdateJob {
             // Dwell so the UI observes INSTALLING before a restart SIGTERMs us.
             delay(1500)
 
-            if (!trigger()) return fail("Couldn't authorize the update (polkit/systemd).")
+            trigger()?.let { return fail("Couldn't authorize the update (polkit/systemd): $it") }
 
             phase = Phase.RESTARTING; message = "Applying update…"
             // If the service is active the helper restarts it and kills us here
@@ -158,19 +158,40 @@ object UpdateJob {
                 }
                 delay(500)
             }
+            // The helper neither restarted us nor wrote a result. Say so: falling
+            // out of this loop silently left the job stuck in RESTARTING forever,
+            // which the UI could only report as a timeout.
+            return fail(
+                "The updater didn't report back within 60s — " +
+                    "check `journalctl -u speculum-update.service`."
+            )
         } finally {
             http.close()
             dlHttp.close()
         }
     }
 
-    /** Triggers the root oneshot unit (authorized from a local session via polkit). */
-    private fun trigger(): Boolean = runCatching {
-        ProcessBuilder("systemctl", "--no-block", "start", "speculum-update.service")
+    /**
+     * Triggers the root oneshot unit (authorized from a local session via polkit).
+     * Returns null on success, else systemd's own diagnostic.
+     *
+     * Reporting that text matters: a refused start leaves nothing behind. The
+     * unit never runs, so the journal has no entry for it, and this process logs
+     * nowhere. Without the child's output the admin is left guessing between
+     * "Access denied" (rule not matching), "Interactive authentication required"
+     * (fell back to auth_admin) and a bus that couldn't be reached at all.
+     */
+    private fun trigger(): String? = runCatching {
+        val proc = ProcessBuilder("systemctl", "--no-block", "start", "speculum-update.service")
             .redirectErrorStream(true)
             .start()
-            .waitFor() == 0
-    }.getOrDefault(false)
+        // Drain before waiting: a full pipe buffer would deadlock the child.
+        val output = proc.inputStream.bufferedReader().use { it.readText() }
+        val code = proc.waitFor()
+        if (code == 0) null
+        else output.lineSequence().firstOrNull { it.isNotBlank() }?.trim()?.take(200)
+            ?: "systemctl exited $code"
+    }.getOrElse { it.message ?: "couldn't run systemctl" }
 
     /**
      * The systemd unit this process runs under, if any, from the cgroup path
