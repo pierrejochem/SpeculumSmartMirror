@@ -1,5 +1,13 @@
 ![Speculum](Images/speculum-logo.svg)
 
+# Speculum — a modular smart-mirror dashboard
+
+**[Documentation](https://pierrejochem.github.io/SpeculumSmartMirror/)** ·
+[Getting started](https://pierrejochem.github.io/SpeculumSmartMirror/getting-started.html) ·
+[Showcase](https://pierrejochem.github.io/SpeculumSmartMirror/showcase.html) ·
+[Architecture](https://pierrejochem.github.io/SpeculumSmartMirror/architecture.html) ·
+[API reference](https://pierrejochem.github.io/SpeculumSmartMirror/api-reference.html)
+
 A [Compose for Desktop](https://www.jetbrains.com/lp/compose-multiplatform/) (JVM)
 reimagining of [MagicMirror²](https://github.com/MagicMirrorOrg/MagicMirror): a
 modular smart-mirror dashboard. Bright modules on a pure-black background so it
@@ -114,7 +122,7 @@ still requires a token to download (a personal access token with the
 ```kotlin
 repositories {
     maven {
-        url = uri("https://maven.pkg.github.com/pierrejochem/Speculum")
+        url = uri("https://maven.pkg.github.com/pierrejochem/SpeculumSmartMirror")
         credentials {
             username = providers.gradleProperty("gpr.user").orNull ?: System.getenv("GITHUB_ACTOR")
             password = providers.gradleProperty("gpr.token").orNull ?: System.getenv("GITHUB_TOKEN")

@@ -5,12 +5,42 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speculum — modular smart-mirror dashboard</title>
 <meta name="description" content="Speculum is a Compose for Desktop smart mirror application: a modular, plugin-based smart-mirror dashboard. Bright modules on pure black, behind two-way glass.">
-<meta property="og:title" content="Speculum — modular smart-mirror dashboard">
-<meta property="og:description" content="A Compose for Desktop smart mirror application. Modules are JAR plug-ins, discovered at runtime.">
-<meta property="og:image" content="assets/img/speculum-social.png">
-<meta property="og:type" content="website">
 <link rel="icon" href="assets/img/speculum-icon.svg">
 <link rel="stylesheet" href="assets/css/style.css">
+<link rel="canonical" href="https://pierrejochem.github.io/SpeculumSmartMirror/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Speculum">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://pierrejochem.github.io/SpeculumSmartMirror/">
+<meta property="og:title" content="Speculum — modular smart-mirror dashboard">
+<meta property="og:description" content="Speculum is a Compose for Desktop smart mirror application: a modular, plugin-based smart-mirror dashboard. Bright modules on pure black, behind two-way glass.">
+<meta property="og:image" content="https://pierrejochem.github.io/SpeculumSmartMirror/assets/img/speculum-social.png">
+<meta property="og:image:alt" content="Speculum — modular smart-mirror dashboard">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Speculum — modular smart-mirror dashboard">
+<meta name="twitter:description" content="Speculum is a Compose for Desktop smart mirror application: a modular, plugin-based smart-mirror dashboard. Bright modules on pure black, behind two-way glass.">
+<meta name="twitter:image" content="https://pierrejochem.github.io/SpeculumSmartMirror/assets/img/speculum-social.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Speculum",
+  "alternateName": "Speculum Smart Mirror",
+  "url": "https://pierrejochem.github.io/SpeculumSmartMirror/",
+  "description": "Speculum is a Compose for Desktop smart mirror application: a modular, plugin-based smart-mirror dashboard. Bright modules on pure black, behind two-way glass.",
+  "applicationCategory": "DeveloperApplication",
+  "applicationSubCategory": "Smart mirror dashboard",
+  "operatingSystem": "Linux, Windows, macOS, Raspberry Pi OS",
+  "softwareVersion": "1.2.4",
+  "image": "https://pierrejochem.github.io/SpeculumSmartMirror/assets/img/speculum-social.png",
+  "license": "https://github.com/pierrejochem/SpeculumSmartMirror/blob/main/LICENSE.md",
+  "codeRepository": "https://github.com/pierrejochem/SpeculumSmartMirror",
+  "programmingLanguage": "Kotlin",
+  "keywords": "smart mirror, magic mirror, MagicMirror alternative, Kotlin, Compose for Desktop, Raspberry Pi, kiosk, plugin architecture",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Person", "name": "Pierre Jochem" }
+}
+</script>
 </head>
 <body>
 <header class="nav">
@@ -43,14 +73,15 @@
 
 <main>
   <section class="hero">
-    <img class="logo" src="assets/img/speculum-logo.svg" alt="Speculum">
+    <img class="logo" src="assets/img/speculum-logo.svg" alt="Speculum logo">
+    <h1 class="sr-only">Speculum — a modular smart-mirror dashboard for Kotlin and Compose for Desktop</h1>
     <p class="eyebrow">Compose for Desktop · JVM · Plugin-based</p>
     <p class="lead">A reimagining of <a href="https://github.com/MagicMirrorOrg/MagicMirror">MagicMirror²</a> as a
       modular smart-mirror dashboard. Bright modules on a pure-black background, so it reflects
       as a "magic mirror" behind two-way glass. Starts fullscreen.</p>
     <div class="btn-row">
       <a class="btn primary" href="getting-started.html">Get started →</a>
-      <a class="btn" href="https://github.com/pierrejochem/Speculum">View on GitHub</a>
+      <a class="btn" href="https://github.com/pierrejochem/SpeculumSmartMirror">View on GitHub</a>
       <a class="btn" href="showcase.html">See it run</a>
     </div>
   </section>
@@ -111,8 +142,8 @@
   </div>
 
   <h2>Quick start</h2>
-  <pre><code>git clone https://github.com/pierrejochem/Speculum.git
-cd Speculum
+  <pre><code>git clone https://github.com/pierrejochem/SpeculumSmartMirror.git
+cd SpeculumSmartMirror
 ./gradlew :composeApp:run</code></pre>
   <p>This builds + deploys every module JAR into <code>plugins/</code>, then launches the fullscreen mirror.
     Full instructions on the <a href="getting-started.html">Getting Started</a> page.</p>
@@ -126,10 +157,10 @@ cd Speculum
 
 <footer class="site">
   <div class="footer-inner">
-    <span>Speculum — modular smart-mirror dashboard. <a href="https://github.com/pierrejochem/Speculum/blob/main/LICENSE.md">MIT-style license</a>.</span>
+    <span>Speculum — modular smart-mirror dashboard. <a href="https://github.com/pierrejochem/SpeculumSmartMirror/blob/main/LICENSE.md">MIT-style license</a>.</span>
     <span class="footer-links">
-      <a href="https://github.com/pierrejochem/Speculum">GitHub</a>
-      <a href="https://github.com/pierrejochem/Speculum/security/advisories/new">Report a vulnerability</a>
+      <a href="https://github.com/pierrejochem/SpeculumSmartMirror">GitHub</a>
+      <a href="https://github.com/pierrejochem/SpeculumSmartMirror/security/advisories/new">Report a vulnerability</a>
       <a href="architecture.html">Architecture</a>
     </span>
   </div>

@@ -7,6 +7,19 @@
 <meta name="description" content="The Speculum mirror-api: MirrorModule, ModuleConfig, ModuleFactory, Region, Notification, MirrorColors, plus the config-server REST API and consuming the published artifact.">
 <link rel="icon" href="assets/img/speculum-icon.svg">
 <link rel="stylesheet" href="assets/css/style.css">
+<link rel="canonical" href="https://pierrejochem.github.io/SpeculumSmartMirror/api-reference.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Speculum">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://pierrejochem.github.io/SpeculumSmartMirror/api-reference.html">
+<meta property="og:title" content="API Reference — Speculum">
+<meta property="og:description" content="The Speculum mirror-api: MirrorModule, ModuleConfig, ModuleFactory, Region, Notification, MirrorColors, plus the config-server REST API and consuming the published artifact.">
+<meta property="og:image" content="https://pierrejochem.github.io/SpeculumSmartMirror/assets/img/speculum-social.png">
+<meta property="og:image:alt" content="Speculum — modular smart-mirror dashboard">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="API Reference — Speculum">
+<meta name="twitter:description" content="The Speculum mirror-api: MirrorModule, ModuleConfig, ModuleFactory, Region, Notification, MirrorColors, plus the config-server REST API and consuming the published artifact.">
+<meta name="twitter:image" content="https://pierrejochem.github.io/SpeculumSmartMirror/assets/img/speculum-social.png">
 </head>
 <body>
 <header class="nav">
@@ -204,7 +217,7 @@ interface NotificationListener {
   <p>For a module developed in its own repo, depend on the published API instead of <code>project(":mirror-api")</code>. It's released to <strong>GitHub Packages</strong> as <code>org.speculum:mirror-api</code> on every <code>v*</code> tag (version = tag without the <code>v</code>; latest published <strong>0.0.1</strong>). The package is public, but GitHub's Maven registry still requires a token with <code>read:packages</code>.</p>
   <pre><code>repositories {
     maven {
-        url = uri("https://maven.pkg.github.com/pierrejochem/Speculum")
+        url = uri("https://maven.pkg.github.com/pierrejochem/SpeculumSmartMirror")
         credentials {
             username = providers.gradleProperty("gpr.user").orNull ?: System.getenv("GITHUB_ACTOR")
             password = providers.gradleProperty("gpr.token").orNull ?: System.getenv("GITHUB_TOKEN")
@@ -215,7 +228,7 @@ dependencies { compileOnly("org.speculum:mirror-api:0.0.1") }</code></pre>
   <p>Put <code>gpr.user</code> / <code>gpr.token</code> in <code>~/.gradle/gradle.properties</code>, or export <code>GITHUB_ACTOR</code> / <code>GITHUB_TOKEN</code>.</p>
 
   <div class="btn-row" style="justify-content:flex-start;">
-    <a class="btn primary" href="https://github.com/pierrejochem/Speculum/blob/main/DEVELOPER_GUIDE.md">Full Developer Guide ↗</a>
+    <a class="btn primary" href="https://github.com/pierrejochem/SpeculumSmartMirror/blob/main/DEVELOPER_GUIDE.md">Full Developer Guide ↗</a>
     <a class="btn" href="user-guide.html">User Guide →</a>
   </div>
 </main>
@@ -224,7 +237,7 @@ dependencies { compileOnly("org.speculum:mirror-api:0.0.1") }</code></pre>
   <div class="footer-inner">
     <span>Speculum — modular smart-mirror dashboard.</span>
     <span class="footer-links">
-      <a href="https://github.com/pierrejochem/Speculum">GitHub</a>
+      <a href="https://github.com/pierrejochem/SpeculumSmartMirror">GitHub</a>
       <a href="architecture.html">Architecture</a>
       <a href="getting-started.html">Getting Started</a>
     </span>
