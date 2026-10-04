@@ -81,8 +81,51 @@ cleanup() {
     rm -f "$PKG" "$STAGE/$FILENAME" "$STAGE/SHA256SUMS" "$STAGE/SHA256SUMS.asc" "$META"
 }
 
-# --- install via the matching package manager -------------------------------
+# --- version floor: never silently go backwards -----------------------------
+# speculum-update.timer applies whatever verified set it finds, so a user who can
+# write another account's ~/.speculum/update could otherwise have root install a
+# genuine but OLD release — a signed downgrade, e.g. back to a version with a
+# known hole. Both versions are read from the package and the package database,
+# never from staged.meta, which the stager controls: the package itself is what
+# the signature and checksum vouch for.
+#
+# Best effort by design. If a version can't be determined (unusual tooling, no
+# `sort -V`), the install proceeds as it always did rather than bricking updates
+# on an exotic system. Root can override deliberately with a marker file.
 TARGET="$STAGE/$FILENAME"
+
+installed_version() {
+    case "$FORMAT" in
+        deb)  dpkg-query -W -f='${Version}' speculum 2>/dev/null ;;
+        rpm)  rpm -q --qf '%{VERSION}-%{RELEASE}' speculum 2>/dev/null ;;
+        arch) pacman -Q speculum 2>/dev/null | awk '{print $2}' ;;
+    esac
+}
+
+package_version() {
+    case "$FORMAT" in
+        deb)  dpkg-deb -f "$TARGET" Version 2>/dev/null ;;
+        rpm)  rpm -qp --qf '%{VERSION}-%{RELEASE}' "$TARGET" 2>/dev/null ;;
+        arch) pacman -Qp "$TARGET" 2>/dev/null | awk '{print $2}' ;;
+    esac
+}
+
+CUR="$(installed_version || true)"
+NEW="$(package_version || true)"
+if [ -n "$CUR" ] && [ -n "$NEW" ] && [ "$CUR" != "$NEW" ] \
+   && printf 'x\n' | sort -V >/dev/null 2>&1; then
+    # sort -V puts the lower version first; if that is the staged one, it is a
+    # downgrade. Equal versions fall out above and stay allowed (a reinstall is
+    # a legitimate repair).
+    OLDEST="$(printf '%s\n%s\n' "$CUR" "$NEW" | sort -V | head -1)"
+    if [ "$OLDEST" = "$NEW" ]; then
+        [ -f /opt/speculum/.allow-downgrade ] \
+            || fail "refusing to downgrade speculum $CUR -> $NEW"
+        log "downgrade $CUR -> $NEW permitted by /opt/speculum/.allow-downgrade"
+    fi
+fi
+
+# --- install via the matching package manager -------------------------------
 log "installing $FILENAME ($FORMAT)"
 case "$FORMAT" in
     deb)
