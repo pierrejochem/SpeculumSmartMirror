@@ -50,3 +50,12 @@ dependencies {
 }
 
 tasks.named<Test>("test") { useJUnitPlatform() }
+
+// Compose 1.12 publishes empty `org.jetbrains.compose.*` shim jars next to the real
+// `androidx.compose.*` artifacts, and both resolve to the same file name (for example
+// `runtime-desktop-1.12.0.jar`). The application plugin copies every runtime jar into a
+// flat `lib/` folder, so those names collide. The real androidx jar comes first on the
+// runtime classpath, so keeping the first copy keeps the classes and drops the shim.
+tasks.withType<AbstractCopyTask>().configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
