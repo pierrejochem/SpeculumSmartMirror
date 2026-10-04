@@ -119,14 +119,26 @@ object UpdateJob {
             // Dwell so the UI observes INSTALLING before a restart SIGTERMs us.
             delay(1500)
 
-            trigger()?.let { return fail("Couldn't authorize the update (polkit/systemd): $it") }
+            // Fast path: ask systemd to run the helper now. Refusal is no longer
+            // fatal — speculum-update.timer runs the same unit within a minute
+            // and it picks up the staged.meta written above — so keep waiting,
+            // and remember why for the timeout message below. polkit authorizes
+            // only an active local session, which a headless or SSH-driven
+            // mirror never has.
+            val triggerError = trigger()
 
-            phase = Phase.RESTARTING; message = "Applying update…"
+            phase = Phase.RESTARTING
+            message =
+                if (triggerError == null) "Applying update…"
+                else "Waiting for the updater to pick this up…"
             // If the service is active the helper restarts it and kills us here
             // (expected — the UI reconnects via /api/version). If launched manually
             // the helper writes result.json and we survive: surface "relaunch".
             val resultFile = File(staging, "result.json")
-            repeat(120) {
+            // 5 minutes, not 60s: installing a ~130 MB package on a Pi takes well
+            // over a minute, and timing out early would report a failure for an
+            // install that is still running.
+            repeat(600) {
                 if (resultFile.exists()) {
                     val body = runCatching { resultFile.readText() }.getOrDefault("")
                     if (body.contains("\"error\"")) {
@@ -162,8 +174,11 @@ object UpdateJob {
             // out of this loop silently left the job stuck in RESTARTING forever,
             // which the UI could only report as a timeout.
             return fail(
-                "The updater didn't report back within 60s — " +
-                    "check `journalctl -u speculum-update.service`."
+                buildString {
+                    append("The updater didn't report back within 5 minutes")
+                    if (triggerError != null) append(" (systemctl: $triggerError)")
+                    append(" — check `journalctl -u speculum-update.service`.")
+                }
             )
         } finally {
             http.close()

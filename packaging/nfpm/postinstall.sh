@@ -26,6 +26,15 @@ fi
 # The updater stages packages under the mirror user's own ~/.speculum/update at
 # runtime — no root-owned staging dir to provision here.
 
+# Arm the poller that applies a staged package. This is what makes the in-app
+# update work without the mirror holding any privilege: polkit only authorizes
+# `systemctl start` from a local ACTIVE session, which a headless, --user-unit or
+# SSH-driven mirror does not have. Enabling is idempotent, and `--now` also arms
+# it on upgrade from a version that shipped no timer.
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl enable --now speculum-update.timer >/dev/null 2>&1 || true
+fi
+
 cat <<'EOF'
 Speculum installed. Run it now with:  speculum
 Kiosk on desktop login (autostart fullscreen):

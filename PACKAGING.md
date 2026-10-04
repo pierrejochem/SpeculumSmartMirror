@@ -34,8 +34,10 @@ The `.deb`/`.rpm` are built in two steps: `jpackage` produces the self-contained
 **app-image** (launcher + bundled JRE + plugins + web admin under `/opt/speculum`),
 then [`nfpm`](https://nfpm.goreleaser.com) wraps that image into a `.deb` and a
 `.rpm`. nfpm — not jpackage's installer — adds the `/usr/bin/speculum` symlink
-(so the launcher is on `PATH`), installs the systemd unit at its proper path,
-and runs the post-install scripts. This is the same app-image the Arch `PKGBUILD`
+(so the launcher is on `PATH`), installs the systemd units at their proper paths
+(`speculum-update.service` plus `speculum-update.timer`, which the post-install
+script enables so the in-app updater can apply a staged package without the
+mirror holding any privilege), and runs the post-install scripts. This is the same app-image the Arch `PKGBUILD`
 wraps, so all three formats behave alike.
 
 ```bash

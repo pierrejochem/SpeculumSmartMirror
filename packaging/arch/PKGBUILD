@@ -67,11 +67,14 @@ package() {
   ln -s /opt/speculum/libexec/speculum-kiosk-enable "$pkgdir/usr/bin/speculum-kiosk-enable"
   ln -s /opt/speculum/libexec/speculum-kiosk-disable "$pkgdir/usr/bin/speculum-kiosk-disable"
 
-  # In-app one-click updater: root oneshot unit, polkit rule (authorizes any
-  # active local session to start it), the privileged install helper, and the
-  # pinned signing key the helper verifies releases against.
+  # In-app one-click updater: root oneshot unit, the timer that runs it every
+  # minute (so a staged package lands with the mirror holding no privilege),
+  # polkit rule (fast path for an active local session), the privileged install
+  # helper, and the pinned signing key the helper verifies releases against.
   install -Dm644 packaging/systemd/speculum-update.service \
     "$pkgdir/usr/lib/systemd/system/speculum-update.service"
+  install -Dm644 packaging/systemd/speculum-update.timer \
+    "$pkgdir/usr/lib/systemd/system/speculum-update.timer"
   install -Dm644 packaging/polkit/org.speculum.update.rules \
     "$pkgdir/usr/share/polkit-1/rules.d/org.speculum.update.rules"
   install -Dm755 packaging/scripts/speculum-apply-update \
