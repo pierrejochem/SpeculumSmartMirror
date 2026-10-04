@@ -79,7 +79,7 @@
               └─ notification bus (broadcast)
                        │
             MirrorScreen renders each module.Content() into its Region</code></pre>
-  <p>Each <code>ModuleFactory</code> contributes its own <code>defaultConfig()</code>, so modules appear automatically once their JAR is in <code>plugins/</code> — no config edit needed.</p>
+  <p>Each <code>ModuleFactory</code> contributes its own <code>defaultConfig()</code>, so modules appear automatically once their JAR is in <code>plugins/</code> — no config edit needed. A factory also declares its options through <code>settingsSchema()</code>, which the config-server serves on <code>/api/modules</code>: the admin console renders controls from that schema rather than knowing any module by name.</p>
 
   <h2 id="modules">Module ↔ component map</h2>
   <div class="table-wrap">

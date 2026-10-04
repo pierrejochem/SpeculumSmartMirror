@@ -62,6 +62,7 @@
       <li><a href="#moduleconfig">ModuleConfig</a></li>
       <li><a href="#mirrorconfig">MirrorConfig</a></li>
       <li><a href="#modulefactory">ModuleFactory</a></li>
+      <li><a href="#settingspec">SettingSpec</a></li>
       <li><a href="#region">Region</a></li>
       <li><a href="#notification">Notification</a></li>
       <li><a href="#mirrorcolors">MirrorColors</a></li>
@@ -147,6 +148,7 @@ data class MirrorConfig(
     val name: String                                 // config `module` name
     fun create(config: ModuleConfig): MirrorModule   // build an instance
     fun defaultConfig(): ModuleConfig? = null         // auto-added placement
+    fun settingsSchema(): List&lt;SettingSpec&gt; = emptyList()  // admin-console controls
     val order: Int get() = 0                          // stacking within a region
 }</code></pre>
   <div class="table-wrap">
@@ -156,6 +158,7 @@ data class MirrorConfig(
       <tr><td><code>name</code></td><td>The config <code>module</code> name this factory handles (e.g. <code>"example"</code>).</td></tr>
       <tr><td><code>create(config)</code></td><td>Build a module instance for the given config entry.</td></tr>
       <tr><td><code>defaultConfig()</code></td><td>Optional default placement, auto-added when no entry already names this module. Return <code>null</code> to require an explicit entry.</td></tr>
+      <tr><td><code>settingsSchema()</code></td><td>Declares the <code>config</code> options this module understands, so the admin console renders labelled, typed controls instead of raw key/value rows. See <a href="#settingspec">SettingSpec</a>. Empty by default, which keeps the raw rows.</td></tr>
       <tr><td><code>order</code></td><td>Stacking order within a region (lower = higher/earlier). Keeps layout deterministic when JARs load in unspecified order.</td></tr>
     </tbody>
   </table>
@@ -164,7 +167,52 @@ data class MirrorConfig(
     override val name = "foo"
     override fun create(config: ModuleConfig) = FooModule(config)
     override fun defaultConfig() = ModuleConfig("foo", "top_center", 3000, mapOf("k" to "v"))
+    override fun settingsSchema() = listOf(
+        SettingSpec("k", "Label", help = "What this option does."),
+    )
 }</code></pre>
+
+  <h2 id="settingspec">SettingSpec</h2>
+  <p><code>org.speculum.config.SettingSpec</code> — one declared entry of a module's <code>config</code> map. The admin console has no built-in knowledge of any module: it renders whatever <code>settingsSchema()</code> returns, served through <code>GET /api/modules</code>. Keys saved in a config but absent from the schema still render as raw key/value rows, so a schema may describe only part of a module's options.</p>
+  <pre><code>@Serializable
+data class SettingSpec(
+    val key: String,                       // the config map key
+    val label: String,                     // shown next to the control
+    val type: SettingType = SettingType.STRING,
+    val default: String = "",              // what the module falls back to
+    val options: List&lt;String&gt; = emptyList(),  // ENUM values
+    val min: Int? = null,                  // INT bounds
+    val max: Int? = null,
+    val step: Int? = null,
+    val help: String = "",                 // one sentence under the control
+    val placeholder: String = "",
+    val editor: String = "",               // editor name for CUSTOM
+    val preview: List&lt;String&gt; = emptyList(),  // "effective value" templates
+    val advanced: Boolean = false,         // fold behind "show advanced"
+)
+
+enum class SettingType { STRING, INT, BOOL, ENUM, TEXT, URL, IP, CUSTOM }</code></pre>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Type</th><th>Control</th></tr></thead>
+    <tbody>
+      <tr><td><code>string</code></td><td>Single-line text field.</td></tr>
+      <tr><td><code>int</code></td><td>Number field, bounded by <code>min</code>/<code>max</code> and stepped by <code>step</code>.</td></tr>
+      <tr><td><code>bool</code></td><td>Checkbox storing <code>"true"</code>/<code>"false"</code>.</td></tr>
+      <tr><td><code>enum</code></td><td>Dropdown over <code>options</code>. A saved value no longer offered stays selectable.</td></tr>
+      <tr><td><code>text</code></td><td>Textarea for multi-line values.</td></tr>
+      <tr><td><code>url</code></td><td>Full-width text field with URL validation.</td></tr>
+      <tr><td><code>ip</code></td><td>Dropdown of the host addresses the server detects, plus auto-detect.</td></tr>
+      <tr><td><code>custom</code></td><td>Purpose-built editor looked up by <code>editor</code>; falls back to a textarea when the console has no editor of that name.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><code>preview</code> renders an "effective value" hint below the control. Each template interpolates <code>{key}</code> from the module's current config, and <code>{key|fallback}</code> substitutes <code>fallback</code> when that key is blank. The first template whose plain <code>{key}</code> references all resolve is shown, so a module can list a specific value first and a derived one after it:</p>
+  <pre><code>SettingSpec(
+    key = "url", label = "URL override", type = SettingType.URL,
+    help = "Leave blank to build the address from the IP and port.",
+    preview = listOf("{url}", "http://{ip|&lt;auto LAN IP&gt;}:{port|8080}"),
+)</code></pre>
 
   <h2 id="region">Region</h2>
   <p><code>org.speculum.core.Region</code> — screen regions; the layout engine places each module in the matching region of the fullscreen dashboard.</p>
@@ -205,7 +253,7 @@ interface NotificationListener {
     <tbody>
       <tr><td>POST</td><td><code>/api/login</code></td><td><span class="pill">none</span></td><td><code>{password}</code> → <code>{token}</code> (12 h)</td></tr>
       <tr><td>POST</td><td><code>/api/password</code></td><td><span class="pill auth">bearer</span></td><td><code>{currentPassword, newPassword}</code> → <code>{message}</code></td></tr>
-      <tr><td>GET</td><td><code>/api/modules</code></td><td><span class="pill auth">bearer</span></td><td>discovered modules + default configs</td></tr>
+      <tr><td>GET</td><td><code>/api/modules</code></td><td><span class="pill auth">bearer</span></td><td>discovered modules + default configs + settings schemas</td></tr>
       <tr><td>GET</td><td><code>/api/config</code></td><td><span class="pill auth">bearer</span></td><td>effective <code>MirrorConfig</code></td></tr>
       <tr><td>PUT</td><td><code>/api/config</code></td><td><span class="pill auth">bearer</span></td><td>save <code>MirrorConfig</code> → writes <code>config.json</code></td></tr>
     </tbody>

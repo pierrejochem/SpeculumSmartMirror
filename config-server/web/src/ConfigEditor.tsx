@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { api, AvailableModule, MirrorConfig, ModuleConfig, REGIONS } from "./api";
-import { ComplimentsEditor } from "./ComplimentsEditor";
+import { api, AvailableModule, MirrorConfig, ModuleConfig, REGIONS, SettingSpec } from "./api";
+import { SettingField } from "./SettingField";
 import { SecurityCard } from "./SecurityCard";
 import { StoreCard } from "./StoreCard";
 import { UpdatesCard } from "./UpdatesCard";
@@ -217,6 +217,7 @@ export function ConfigEditor({ onLogout }: { onLogout: () => void }) {
                   <ModuleCard
                     key={activeIdx}
                     mod={config.modules[activeIdx]}
+                    schema={available.find((a) => a.name === config.modules[activeIdx].module)?.schema ?? []}
                     ips={ips}
                     onChange={(x) => updateModule(activeIdx, x)}
                     onRemove={() => removeModule(activeIdx)}
@@ -257,14 +258,23 @@ export function ConfigEditor({ onLogout }: { onLogout: () => void }) {
 }
 
 function ModuleCard({
-  mod, ips, onChange, onRemove,
-}: { mod: ModuleConfig; ips: string[]; onChange: (m: ModuleConfig) => void; onRemove: () => void }) {
-  const isCompliments = mod.module === "compliments";
-  const isQr = mod.module === "qr";
-  // Special editors replace the raw key-value rows for these keys.
-  const hidden = (k: string) =>
-    (isCompliments && k === "compliments") || (isQr && (k === "ip" || k === "size"));
-  const entries = Object.entries(mod.config).filter(([k]) => !hidden(k));
+  mod, schema, ips, onChange, onRemove,
+}: {
+  mod: ModuleConfig;
+  schema: SettingSpec[];
+  ips: string[];
+  onChange: (m: ModuleConfig) => void;
+  onRemove: () => void;
+}) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Options the module declares, split so the rarely-touched ones stay folded
+  // away. Everything else in the saved config — a legacy key, a hand-added one,
+  // or a module that ships no schema at all — keeps the raw key/value rows.
+  const declared = schema.filter((s) => !s.advanced);
+  const advanced = schema.filter((s) => s.advanced);
+  const known = new Set(schema.map((s) => s.key));
+  const extras = Object.entries(mod.config).filter(([k]) => !known.has(k));
 
   const setKey = (key: string, value: string) =>
     onChange({ ...mod, config: { ...mod.config, [key]: value } });
@@ -280,6 +290,18 @@ function ModuleCard({
     onChange({ ...mod, config: next });
   };
   const addKey = () => onChange({ ...mod, config: { ...mod.config, "": "" } });
+
+  const field = (spec: SettingSpec) => (
+    <SettingField
+      key={spec.key}
+      spec={spec}
+      value={mod.config[spec.key]}
+      config={mod.config}
+      schema={schema}
+      ips={ips}
+      onChange={(v) => setKey(spec.key, v)}
+    />
+  );
 
   return (
     <div className="module">
@@ -297,50 +319,40 @@ function ModuleCard({
         <button className="ghost danger" onClick={onRemove}>Remove</button>
       </div>
 
-      <div className="kv">
-        {entries.map(([k, v], idx) => (
-          <div className="kv-row" key={idx}>
-            <input className="k" placeholder="key" value={k}
-              onChange={(e) => setConfigKey(k, e.target.value, v)} />
-            <input className="v" placeholder="value" value={v}
-              onChange={(e) => setConfigKey(k, k, e.target.value)} />
-            <button className="ghost danger" aria-label="Remove option" title="Remove option" onClick={() => removeKey(k)}>×</button>
-          </div>
-        ))}
-        <button className="ghost small" onClick={addKey}>+ option</button>
-      </div>
+      {declared.length > 0 && <div className="fields">{declared.map(field)}</div>}
 
-      {isCompliments && (
-        <ComplimentsEditor
-          value={mod.config["compliments"] ?? ""}
-          onChange={(v) => onChange({ ...mod, config: { ...mod.config, compliments: v } })}
-        />
+      {advanced.length > 0 && (
+        <>
+          <button
+            className="ghost small adv-toggle"
+            aria-expanded={showAdvanced}
+            onClick={() => setShowAdvanced((x) => !x)}
+          >
+            {showAdvanced ? "Hide" : "Show"} advanced ({advanced.length})
+          </button>
+          {showAdvanced && <div className="fields">{advanced.map(field)}</div>}
+        </>
       )}
 
-      {isQr && (() => {
-        const ip = mod.config["ip"] ?? "";
-        const port = mod.config["port"] || "8080";
-        const target = mod.config["url"] || `http://${ip || "<auto LAN IP>"}:${port}`;
-        return (
-          <div className="qr">
-            <div className="row">
-              <label>QR target IP
-                <select value={ip} onChange={(e) => setKey("ip", e.target.value)}>
-                  <option value="">Auto-detect (LAN)</option>
-                  {ips.map((x) => <option key={x} value={x}>{x}</option>)}
-                  {ip && !ips.includes(ip) && <option value={ip}>{ip} (custom)</option>}
-                </select>
-              </label>
-              <label>Size (dp)
-                <input type="number" min={60} max={400} step={10}
-                  value={mod.config["size"] || "110"}
-                  onChange={(e) => setKey("size", e.target.value)} />
-              </label>
+      {(extras.length > 0 || schema.length === 0) && (
+        <div className="kv">
+          {schema.length > 0 && extras.length > 0 && (
+            <span className="muted small">
+              Options this module does not declare. They are still saved and passed through.
+            </span>
+          )}
+          {extras.map(([k, v], idx) => (
+            <div className="kv-row" key={idx}>
+              <input className="k" placeholder="key" value={k}
+                onChange={(e) => setConfigKey(k, e.target.value, v)} />
+              <input className="v" placeholder="value" value={v}
+                onChange={(e) => setConfigKey(k, k, e.target.value)} />
+              <button className="ghost danger" aria-label="Remove option" title="Remove option" onClick={() => removeKey(k)}>×</button>
             </div>
-            <div className="muted small">Encodes: <code>{target}</code></div>
-          </div>
-        );
-      })()}
+          ))}
+          <button className="ghost small" onClick={addKey}>+ option</button>
+        </div>
+      )}
     </div>
   );
 }
