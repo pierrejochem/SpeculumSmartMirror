@@ -7,6 +7,19 @@
 <meta name="description" content="Configure Speculum: the web admin, config.json, regions, packaging native installers, Raspberry Pi kiosk autostart, low-power tuning, and verifying releases.">
 <link rel="icon" href="assets/img/speculum-icon.svg">
 <link rel="stylesheet" href="assets/css/style.css">
+<link rel="canonical" href="https://pierrejochem.github.io/SpeculumSmartMirror/user-guide.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Speculum">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://pierrejochem.github.io/SpeculumSmartMirror/user-guide.html">
+<meta property="og:title" content="User Guide — Speculum">
+<meta property="og:description" content="Configure Speculum: the web admin, config.json, regions, packaging native installers, Raspberry Pi kiosk autostart, low-power tuning, and verifying releases.">
+<meta property="og:image" content="https://pierrejochem.github.io/SpeculumSmartMirror/assets/img/speculum-social.png">
+<meta property="og:image:alt" content="Speculum — modular smart-mirror dashboard">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="User Guide — Speculum">
+<meta name="twitter:description" content="Configure Speculum: the web admin, config.json, regions, packaging native installers, Raspberry Pi kiosk autostart, low-power tuning, and verifying releases.">
+<meta name="twitter:image" content="https://pierrejochem.github.io/SpeculumSmartMirror/assets/img/speculum-social.png">
 </head>
 <body>
 <header class="nav">
@@ -97,11 +110,11 @@ cd config-server/web && npm install && npm run dev
   <pre><code>sudo apt update
 sudo apt install -y openjdk-17-jdk fakeroot binutils dpkg
 
-git clone https://github.com/pierrejochem/Speculum.git && cd Speculum
+git clone https://github.com/pierrejochem/SpeculumSmartMirror.git && cd SpeculumSmartMirror
 (cd config-server/web && npm install && npm run build)   # build the admin UI first
 ./gradlew packageDeb
 # → composeApp/build/compose/binaries/main/deb/speculum_1.0.0-1_arm64.deb</code></pre>
-  <p>Also available: <code>./gradlew packageRpm</code> (needs <code>rpmbuild</code>), and a <a href="https://github.com/pierrejochem/Speculum/blob/main/packaging/arch/PKGBUILD">PKGBUILD</a> for Arch (<code>makepkg -si</code> on an aarch64 box).</p>
+  <p>Also available: <code>./gradlew packageRpm</code> (needs <code>rpmbuild</code>), and a <a href="https://github.com/pierrejochem/SpeculumSmartMirror/blob/main/packaging/arch/PKGBUILD">PKGBUILD</a> for Arch (<code>makepkg -si</code> on an aarch64 box).</p>
 
   <h2 id="install">Install &amp; run</h2>
   <pre><code>sudo apt install ./composeApp/build/compose/binaries/main/deb/speculum_1.0.0-1_arm64.deb
@@ -139,15 +152,15 @@ speculum-kiosk-disable       # undo</code></pre>
   <h2 id="verify">Verifying releases</h2>
   <p>Every release ships a <code>SHA256SUMS</code> covering all packages (<code>.deb</code> / <code>.rpm</code> / <code>.pkg.tar.*</code>):</p>
   <pre><code>sha256sum -c SHA256SUMS --ignore-missing</code></pre>
-  <p>When signing is configured, each asset and <code>SHA256SUMS</code> also gets a detached <code>.asc</code> GPG signature. The public key is published in <a href="https://github.com/pierrejochem/Speculum/blob/main/KEYS"><code>KEYS</code></a>:</p>
-  <pre><code>curl -fsSL https://raw.githubusercontent.com/pierrejochem/Speculum/main/KEYS | gpg --import
+  <p>When signing is configured, each asset and <code>SHA256SUMS</code> also gets a detached <code>.asc</code> GPG signature. The public key is published in <a href="https://github.com/pierrejochem/SpeculumSmartMirror/blob/main/KEYS"><code>KEYS</code></a>:</p>
+  <pre><code>curl -fsSL https://raw.githubusercontent.com/pierrejochem/SpeculumSmartMirror/main/KEYS | gpg --import
 gpg --verify SHA256SUMS.asc SHA256SUMS
 gpg --verify speculum_&lt;version&gt;_arm64.deb.asc speculum_&lt;version&gt;_arm64.deb</code></pre>
   <p class="muted">Key fingerprint: <code>4F73521A2DB000391BEF252AAD96D4494AF02FA1</code></p>
-  <div class="note"><strong>Reporting a vulnerability:</strong> do it privately via the GitHub <a href="https://github.com/pierrejochem/Speculum/security/advisories/new">Security → Report a vulnerability</a> advisory form, not a public issue.</div>
+  <div class="note"><strong>Reporting a vulnerability:</strong> do it privately via the GitHub <a href="https://github.com/pierrejochem/SpeculumSmartMirror/security/advisories/new">Security → Report a vulnerability</a> advisory form, not a public issue.</div>
 
   <div class="btn-row" style="justify-content:flex-start;">
-    <a class="btn primary" href="https://github.com/pierrejochem/Speculum/blob/main/PACKAGING.md">Full Packaging guide ↗</a>
+    <a class="btn primary" href="https://github.com/pierrejochem/SpeculumSmartMirror/blob/main/PACKAGING.md">Full Packaging guide ↗</a>
     <a class="btn" href="api-reference.html">API Reference →</a>
   </div>
 </main>
@@ -156,7 +169,7 @@ gpg --verify speculum_&lt;version&gt;_arm64.deb.asc speculum_&lt;version&gt;_arm
   <div class="footer-inner">
     <span>Speculum — modular smart-mirror dashboard.</span>
     <span class="footer-links">
-      <a href="https://github.com/pierrejochem/Speculum">GitHub</a>
+      <a href="https://github.com/pierrejochem/SpeculumSmartMirror">GitHub</a>
       <a href="architecture.html">Architecture</a>
       <a href="getting-started.html">Getting Started</a>
     </span>

@@ -7,6 +7,19 @@
 <meta name="description" content="Install prerequisites, build, and run the Speculum smart-mirror dashboard; launch the web admin and add your first module.">
 <link rel="icon" href="assets/img/speculum-icon.svg">
 <link rel="stylesheet" href="assets/css/style.css">
+<link rel="canonical" href="https://pierrejochem.github.io/SpeculumSmartMirror/getting-started.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Speculum">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://pierrejochem.github.io/SpeculumSmartMirror/getting-started.html">
+<meta property="og:title" content="Getting Started — Speculum">
+<meta property="og:description" content="Install prerequisites, build, and run the Speculum smart-mirror dashboard; launch the web admin and add your first module.">
+<meta property="og:image" content="https://pierrejochem.github.io/SpeculumSmartMirror/assets/img/speculum-social.png">
+<meta property="og:image:alt" content="Speculum — modular smart-mirror dashboard">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Getting Started — Speculum">
+<meta name="twitter:description" content="Install prerequisites, build, and run the Speculum smart-mirror dashboard; launch the web admin and add your first module.">
+<meta name="twitter:image" content="https://pierrejochem.github.io/SpeculumSmartMirror/assets/img/speculum-social.png">
 </head>
 <body>
 <header class="nav">
@@ -62,8 +75,8 @@
   <div class="note"><strong>Note:</strong> the desktop app is pure JVM. Module plugins are loaded with the JDK <code>URLClassLoader</code> + <code>ServiceLoader</code> — there is no Android or iOS target.</div>
 
   <h2 id="run">Run the desktop app</h2>
-  <pre><code>git clone https://github.com/pierrejochem/Speculum.git
-cd Speculum
+  <pre><code>git clone https://github.com/pierrejochem/SpeculumSmartMirror.git
+cd SpeculumSmartMirror
 ./gradlew :composeApp:run</code></pre>
   <p>That single command:</p>
   <ol>
@@ -97,7 +110,7 @@ config-server/         web admin: Ktor backend + React/Vite UI</code></pre>
   </ol>
   <div class="btn-row" style="justify-content:flex-start;">
     <a class="btn primary" href="api-reference.html">API Reference →</a>
-    <a class="btn" href="https://github.com/pierrejochem/Speculum/blob/main/DEVELOPER_GUIDE.md">Developer Guide ↗</a>
+    <a class="btn" href="https://github.com/pierrejochem/SpeculumSmartMirror/blob/main/DEVELOPER_GUIDE.md">Developer Guide ↗</a>
   </div>
 </main>
 
@@ -105,7 +118,7 @@ config-server/         web admin: Ktor backend + React/Vite UI</code></pre>
   <div class="footer-inner">
     <span>Speculum — modular smart-mirror dashboard.</span>
     <span class="footer-links">
-      <a href="https://github.com/pierrejochem/Speculum">GitHub</a>
+      <a href="https://github.com/pierrejochem/SpeculumSmartMirror">GitHub</a>
       <a href="architecture.html">Architecture</a>
       <a href="user-guide.html">User Guide</a>
     </span>

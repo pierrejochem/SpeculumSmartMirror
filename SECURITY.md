@@ -5,7 +5,7 @@
 Please report security issues **privately** — do not open a public issue.
 
 - Preferred: GitHub → **Security** tab → **Report a vulnerability** (private
-  advisory) on [pierrejochem/Speculum](https://github.com/pierrejochem/Speculum/security/advisories/new).
+  advisory) on [pierrejochem/SpeculumSmartMirror](https://github.com/pierrejochem/SpeculumSmartMirror/security/advisories/new).
 - Or email the maintainer: **pierrejochem@msn.com**.
 
 Please include affected version, reproduction steps, and impact. Expect an
@@ -35,7 +35,7 @@ verify:
 
 ```bash
 # import the maintainer's public key
-curl -fsSL https://raw.githubusercontent.com/pierrejochem/Speculum/main/KEYS | gpg --import
+curl -fsSL https://raw.githubusercontent.com/pierrejochem/SpeculumSmartMirror/main/KEYS | gpg --import
 
 # verify the checksums file, then an asset
 gpg --verify SHA256SUMS.asc SHA256SUMS
