@@ -69,7 +69,9 @@ ConfigLoader (global options)        plugins/*.jar
 ```
 
 Each `ModuleFactory` contributes its own `defaultConfig()`, so modules appear
-automatically once their JAR is in `plugins/` — no config edit needed.
+automatically once their JAR is in `plugins/` — no config edit needed. It also
+declares its options with `settingsSchema()`, which is what the admin console
+renders its settings controls from.
 
 ## Run
 
@@ -110,6 +112,39 @@ See **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)**. In short: create a
 `MirrorModule` + a `ModuleFactory` declared in
 `META-INF/services/org.speculum.core.ModuleFactory`, register it in
 `settings.gradle.kts` and the root `deployModules` task, then run.
+
+### Declaring your settings
+
+The admin console knows nothing about any module by name. It renders whatever
+`ModuleFactory.settingsSchema()` returns, so declare your `config` keys there to
+get labelled, typed controls instead of raw key/value text rows:
+
+```kotlin
+override fun settingsSchema() = listOf(
+    SettingSpec("title", "Source name", default = "New York Times"),
+    SettingSpec(
+        key = "updateInterval", label = "Rotation (s)", type = SettingType.INT,
+        default = "10", min = 3, max = 600,
+        help = "Seconds each headline stays on screen.",
+    ),
+    SettingSpec(
+        key = "units", label = "Units", type = SettingType.ENUM,
+        default = "metric", options = listOf("metric", "imperial"),
+    ),
+)
+```
+
+Types are `STRING`, `INT`, `BOOL`, `ENUM`, `TEXT`, `URL`, `IP` and `CUSTOM`; set
+`advanced = true` to fold a rarely-touched option away. Keep each `default`
+equal to the fallback your module code reads, since that is the hint shown while
+a key is unset — `defaultConfig()` is a separate thing, the starting config a
+freshly added module gets.
+
+The method defaults to an empty list, so a module that declares nothing still
+works and keeps the raw rows, as does any key saved in a config but missing from
+the schema. Added in `mirror-api` 1.3.0; full reference in
+[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md#declaring-settings) and the
+[API reference](https://pierrejochem.github.io/SpeculumSmartMirror/api-reference.html#settingspec).
 
 ## Using `mirror-api` as a dependency
 
