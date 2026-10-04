@@ -65,6 +65,33 @@ export function UpdatesCard() {
     const deadline = Date.now() + 90_000;
     while (Date.now() < deadline) {
       await sleep(2000);
+
+      // The job can still fail *after* it reported installing/restarting — the
+      // helper refuses to authorize (polkit), or the install itself breaks. The
+      // server is then very much alive, so keep reading progress: without this
+      // the real message is never shown and the card just times out below.
+      // A restart that did succeed answers from a fresh job (phase "idle"),
+      // which is not terminal and falls through to the version check.
+      try {
+        const p = await api.getUpdateProgress();
+        setProgress(p);
+        if (p.targetVersion) target = p.targetVersion;
+        if (p.phase === "error") {
+          setError(p.message || "Update failed");
+          setRunning(false);
+          setReconnecting(false);
+          return;
+        }
+        if (p.phase === "installed") {
+          setDone(p.message || "Update installed — relaunch Speculum to apply.");
+          setRunning(false);
+          setReconnecting(false);
+          return;
+        }
+      } catch {
+        // Expected while the server is down mid-restart — keep waiting.
+      }
+
       try {
         const v = await api.getVersion();
         if (target && v.version === target) {
