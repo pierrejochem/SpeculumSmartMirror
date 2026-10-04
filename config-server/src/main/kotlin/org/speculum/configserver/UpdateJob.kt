@@ -99,7 +99,9 @@ object UpdateJob {
             val sumsFile = File(staging, "SHA256SUMS")
             val sigFile = File(staging, "SHA256SUMS.asc")
             File(staging, "result.json").delete()
+            // Clear temp files a previous, interrupted run may have left behind.
             partFile.delete()
+            File(staging, "staged.meta.part").delete()
 
             val dl = Downloader(dlHttp)
             message = "Downloading ${pkgAsset.name}…"
@@ -120,11 +122,23 @@ object UpdateJob {
                 return fail("Verification failed: ${result.reason}")
             }
 
-            File(staging, "staged.meta").writeText(
+            // staged.meta is the marker the root helper keys on, and it is the
+            // LAST thing written, so it must appear complete or not at all.
+            // writeText creates the file before filling it: a helper run landing
+            // in that window would read an empty meta, fail to parse it and clear
+            // the whole staged set. Write to a temp name and rename it in — the
+            // rename is atomic within the directory.
+            val metaFile = File(staging, "staged.meta")
+            val metaTmp = File(staging, "staged.meta.part")
+            metaTmp.writeText(
                 json.encodeToString(
                     StagedMeta(pkgAsset.name, SignatureVerifier.sha256(pkgFile), target!!, format.name.lowercase())
                 )
             )
+            if (!metaTmp.renameTo(metaFile)) {
+                metaTmp.delete()
+                return fail("Couldn't finish staging the update.")
+            }
 
             phase = Phase.INSTALLING; message = "Installing — Speculum will restart…"
             // Dwell so the UI observes INSTALLING before a restart SIGTERMs us.
