@@ -164,13 +164,13 @@ repositories {
         }
     }
 }
-dependencies { compileOnly("org.speculum:mirror-api:1.3.0") }
+dependencies { compileOnly("org.speculum:mirror-api:1.4.0") }
 ```
 
 Put `gpr.user` (your GitHub username) and `gpr.token` (the PAT) in
 `~/.gradle/gradle.properties`, or export `GITHUB_ACTOR` / `GITHUB_TOKEN`. The
-version is the release tag without the `v` (tag `v1.3.0` → `1.3.0`); latest
-published: **1.3.0**. Publishing config lives in
+version is the release tag without the `v` (tag `v1.4.0` → `1.4.0`); latest
+published: **1.4.0**. Publishing config lives in
 [`mirror-api/build.gradle.kts`](mirror-api/build.gradle.kts); the
 `publish-mirror-api` job in [`.github/workflows/release.yml`](.github/workflows/release.yml)
 runs it on tag push.

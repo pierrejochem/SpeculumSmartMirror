@@ -2,9 +2,117 @@
 
 All notable changes to this project are documented here.
 This file is generated from [Conventional Commits](https://www.conventionalcommits.org).
-## Unreleased
+## 1.4.0 — 2026-10-04
+
+### Bug Fixes
+- Point catalog at Example Module v1.1.0 and show plugin version
+
+### Documentation
+- Explain settingsSchema() for module authors
+- Record the published mirror-api and app version as 1.3.0
+
+## 1.3.0 — 2026-10-04
 
 ### Features
+- Declare module settings in plugin code, not the admin console
+
+### Documentation
+- Correct the stale repository URL in the social preview image
+- Add canonical URLs, sitemap, structured data; fix stale repo links
+
+## 1.2.4 — 2026-10-04
+
+### Bug Fixes
+- Clean up /opt/speculum on uninstall
+
+## 1.2.3 — 2026-10-04
+
+### Bug Fixes
+- Dedupe distribution jars for Compose 1.12
+
+## 1.2.1 — 2026-07-24
+
+### Documentation
+- Refresh config editor screenshot for the redesigned admin UI
+
+## 1.2.0 — 2026-07-05
+
+### Features
+- Optimize ui
+- Add plugin store
+
+### Bug Fixes
+- Remove deprecated code
+- Correct plugin url and improve error handling
+
+### Documentation
+- Add runbook to pages
+
+## 1.1.0 — 2026-06-23
+
+### Features
+- Change kiosk auto start and introduce kiosk helpers **[breaking]**
+
+### Bug Fixes
+- Handle restart more robust
+- Drop ProtectHome from updater unit so it can write home staging
+- Prevent updater download timeout on large packages
+
+### Refactor
+- Extract example-module into standalone repo **[breaking]**
+- Extract example-module into standalone repo **[breaking]**
+
+### Other
+- Remove github link from navigation
+- Update github pages content to current state
+
+## 1.0.0 — 2026-06-19
+
+### Features
+- Change kiosk auto start and introduce kiosk helpers **[breaking]**
+
+### Other
+- Remove github link from navigation
+- Update github pages content to current state
+
+## 0.5.6 — 2026-06-18
+
+### Bug Fixes
+- Handle restart more robust
+- Drop ProtectHome from updater unit so it can write home staging
+
+## 0.5.4 — 2026-06-18
+
+### Bug Fixes
+- Prevent updater download timeout on large packages
+
+## 0.5.2 — 2026-06-18
+
+### Bug Fixes
+- Solve repository name and permission issue with updater download
+
+## 0.5.0 — 2026-06-18
+
+### Features
+- One-click updater
+
+### Bug Fixes
+- Solve JcaPGPKeyPair' is deprecated
+
+## 0.4.2 — 2026-06-18
+
+### Bug Fixes
+- Improve version check logic
+
+## 0.4.1 — 2026-06-14
+
+### Bug Fixes
+- Use non-reserved var for arch pkgver in release workflow
+
+## 0.4.0 — 2026-06-14
+
+### Features
+- Create changelog via conventional commits
 - Improve config-server card design
 - Improve responsiveness for config-server ui
 - Improve accessibility in config-server
