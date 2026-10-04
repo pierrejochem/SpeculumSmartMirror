@@ -304,15 +304,56 @@ val deployToModules by tasks.registering(Copy::class) {
 }
 ```
 
-The factory provides the name, constructor, and default placement:
+The factory provides the name, constructor, default placement, and the schema
+for its options:
 
 ```kotlin
 class FooModuleFactory : ModuleFactory {
     override val name = "foo"
     override fun create(config: ModuleConfig) = FooModule(config)
     override fun defaultConfig() = ModuleConfig("foo", "top_center", 3000, mapOf("k" to "v"))
+    override fun settingsSchema() = listOf(
+        SettingSpec("k", "Label", help = "What this option does."),
+    )
 }
 ```
+
+### Declaring settings
+
+`settingsSchema()` is what the admin console renders. It knows nothing about any
+module by name: a module that returns specs gets labelled, typed controls, and
+one that returns the default empty list gets the raw key/value rows instead. Any
+key saved in the config but missing from the schema also falls back to a raw row,
+so a schema can describe part of a module and grow later.
+
+```kotlin
+override fun settingsSchema() = listOf(
+    SettingSpec("title", "Source name", default = "New York Times"),
+    SettingSpec(
+        key = "url", label = "Feed URL", type = SettingType.URL,
+        default = "https://example.org/feed.xml",
+        help = "RSS or Atom feed to read headlines from.",
+    ),
+    SettingSpec(
+        key = "updateInterval", label = "Rotation (s)", type = SettingType.INT,
+        default = "10", min = 3, max = 600,
+    ),
+    SettingSpec("showPublishDate", "Show publish date", type = SettingType.BOOL, default = "true"),
+    SettingSpec(
+        key = "units", label = "Units", type = SettingType.ENUM,
+        default = "metric", options = listOf("metric", "imperial"),
+    ),
+    SettingSpec("fadeSpeed", "Fade (ms)", type = SettingType.INT, default = "4000", advanced = true),
+)
+```
+
+Types are `STRING`, `INT`, `BOOL`, `ENUM`, `TEXT`, `URL`, `IP` and `CUSTOM`. Keep
+each `default` equal to the fallback the module code reads, since the console
+shows it as the hint for an unset key — `defaultConfig()` is a separate thing, a
+suggested starting config, and the two may legitimately differ. Set
+`advanced = true` to fold a rarely-touched option away, and see
+[the API reference](docs/api-reference.html) for `preview` templates and the
+`CUSTOM` editor hook.
 
 Register the subproject in `settings.gradle.kts`, add it to the root
 `deployModules` task, then build + deploy + run:
@@ -376,6 +417,7 @@ last notification. The default modules (`clock`, `weather`, `calendar`,
 
 - [ ] Subproject `modules/<name>-module/` with `build.gradle.kts` (`compileOnly(:mirror-api)`; add `kotlinSerialization` if using `@Serializable`)
 - [ ] `<Name>Module` extends `MirrorModule`; `<Name>ModuleFactory` implements `ModuleFactory` (+ `defaultConfig()`)
+- [ ] `settingsSchema()` declares every key `defaultConfig()` ships, so the admin console shows real controls
 - [ ] `META-INF/services/org.speculum.core.ModuleFactory` lists the factory FQN
 - [ ] Included in `settings.gradle.kts` and the root `deployModules` task
 - [ ] Network in a provider; icons are white vectors; text uses `MirrorColors`

@@ -36,6 +36,7 @@ val deployToModules = tasks.register<Copy>("deployToModules") {
     into(rootProject.layout.projectDirectory.dir("plugins"))
 }
 dependencies {
+    testImplementation(project(":mirror-api")) // compileOnly above does not reach test sources
     testImplementation(libs.compose.runtime) // Compose compiler runs on test sources, needs runtime
     testImplementation(libs.ktor.client.core) // CalendarProvider references HttpClient (class load)
     testImplementation(libs.kotlinx.datetime)

@@ -14,10 +14,35 @@ export interface MirrorConfig {
   modules: ModuleConfig[];
 }
 
+// Mirrors org.speculum.config.SettingType's wire names. Anything the renderer
+// does not recognise falls back to a plain text input.
+export type SettingType =
+  | "string" | "int" | "bool" | "enum" | "text" | "url" | "ip" | "custom";
+
+/** Mirrors org.speculum.config.SettingSpec — one declared module option. */
+export interface SettingSpec {
+  key: string;
+  label: string;
+  type: SettingType;
+  default: string;
+  options: string[];
+  min: number | null;
+  max: number | null;
+  step: number | null;
+  help: string;
+  placeholder: string;
+  editor: string;
+  preview: string[];
+  advanced: boolean;
+}
+
 export interface AvailableModule {
   name: string;
   order: number;
   defaultConfig: ModuleConfig | null;
+  // Empty for modules that declare none; the console then shows raw key/value
+  // rows for every option, as it did before schemas existed.
+  schema: SettingSpec[];
 }
 
 export interface UpdateStatus {

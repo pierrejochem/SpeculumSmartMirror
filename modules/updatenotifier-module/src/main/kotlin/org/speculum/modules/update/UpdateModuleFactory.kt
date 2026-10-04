@@ -1,6 +1,7 @@
 package org.speculum.modules.update
 
 import org.speculum.config.ModuleConfig
+import org.speculum.config.SettingSpec
 import org.speculum.core.MirrorModule
 import org.speculum.core.ModuleFactory
 
@@ -8,6 +9,15 @@ class UpdateModuleFactory : ModuleFactory {
     override val name = "updatenotifier"
 
     override fun create(config: ModuleConfig): MirrorModule = UpdateModule(config)
+
+    override fun settingsSchema() = listOf(
+        SettingSpec(
+            key = "repo", label = "Release repository",
+            default = "pierrejochem/SpeculumSmartMirror",
+            placeholder = "owner/repo",
+            help = "GitHub repository whose releases are checked for updates.",
+        ),
+    )
 
     override fun defaultConfig(): ModuleConfig = ModuleConfig(
         module = "updatenotifier",

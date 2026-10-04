@@ -3,17 +3,23 @@ package org.speculum.configserver
 import kotlinx.serialization.Serializable
 import org.speculum.config.ConfigPaths
 import org.speculum.config.ModuleConfig
+import org.speculum.config.SettingSpec
 import org.speculum.core.ModuleFactory
 import java.io.File
 import java.net.URLClassLoader
 import java.util.ServiceLoader
 
-/** A module the UI can add, with its suggested default placement/options. */
+/**
+ * A module the UI can add, with its suggested default placement/options and the
+ * schema describing those options. [schema] is empty for modules that declare
+ * none, and the admin console then falls back to raw key/value rows.
+ */
 @Serializable
 data class AvailableModule(
     val name: String,
     val order: Int,
     val defaultConfig: ModuleConfig?,
+    val schema: List<SettingSpec> = emptyList(),
 )
 
 /**
@@ -32,7 +38,7 @@ fun scanAvailableModules(): List<AvailableModule> {
     )
     return runCatching {
         ServiceLoader.load(ModuleFactory::class.java, loader)
-            .map { AvailableModule(it.name, it.order, it.defaultConfig()) }
+            .map { AvailableModule(it.name, it.order, it.defaultConfig(), it.settingsSchema()) }
             .distinctBy { it.name }
             .sortedBy { it.order }
     }.getOrDefault(emptyList())

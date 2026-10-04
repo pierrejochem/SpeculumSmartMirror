@@ -478,9 +478,62 @@ button.small { padding: 6px 11px; font-size: 12px; }
   padding: 0 6px;
 }
 
-/* ---- Compliments / QR sub-editors --------------------------------------- */
+/* ---- Schema-driven module settings -------------------------------------- */
 
-.compl, .qr {
+/* Declared options from the module's settingsSchema(). Two columns on desktop;
+   url/text/custom fields claim the full width via .field-wide. */
+.fields {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px 16px;
+  align-items: start;
+  min-width: 0;
+}
+.field { display: grid; gap: 5px; min-width: 0; }
+.field-wide { grid-column: 1 / -1; }
+.field input, .field select, .field textarea { width: 100%; min-width: 0; }
+.field-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.field-help { line-height: 1.45; }
+.field-help code { font-family: var(--mono); font-size: 11.5px; word-break: break-all; }
+
+/* Checkboxes read left-to-right, unlike the stacked label/control default. */
+.field-bool { align-self: end; }
+.bool-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.bool-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  accent-color: var(--violet);
+  cursor: pointer;
+  padding: 0;
+}
+.bool-text {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  color: var(--fg);
+}
+
+.adv-toggle { margin-top: 12px; justify-self: start; }
+
+/* ---- Compliments sub-editor --------------------------------------------- */
+
+.compl {
   margin-top: 16px;
   border-top: 1px dashed var(--line);
   padding-top: 14px;

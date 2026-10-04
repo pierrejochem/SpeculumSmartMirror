@@ -35,3 +35,12 @@ val deployToModules = tasks.register<Copy>("deployToModules") {
     from(tasks.named("jar"))
     into(rootProject.layout.projectDirectory.dir("plugins"))
 }
+
+dependencies {
+    testImplementation(project(":mirror-api")) // compileOnly above does not reach test sources
+    testImplementation(libs.compose.runtime) // Compose compiler runs on test sources, needs runtime
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
+}
+
+tasks.named<Test>("test") { useJUnitPlatform() }

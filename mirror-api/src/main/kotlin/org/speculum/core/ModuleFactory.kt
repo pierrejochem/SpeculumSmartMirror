@@ -1,6 +1,7 @@
 package org.speculum.core
 
 import org.speculum.config.ModuleConfig
+import org.speculum.config.SettingSpec
 
 /**
  * Service-provider interface for pluggable modules. A module packaged as a
@@ -22,6 +23,17 @@ interface ModuleFactory {
      * names this module. Return null to require an explicit config entry.
      */
     fun defaultConfig(): ModuleConfig? = null
+
+    /**
+     * Declares the `config` options this module understands, so the admin
+     * console can render labelled, typed controls for them instead of raw
+     * key/value text rows. Returning an empty list keeps the raw rows, which is
+     * why the default keeps older plugins working unchanged.
+     *
+     * Every key in [defaultConfig]'s `config` map should appear here, and each
+     * [SettingSpec.default] should match the fallback the module code reads.
+     */
+    fun settingsSchema(): List<SettingSpec> = emptyList()
 
     /**
      * Stacking order within a region (lower = higher/earlier). Used to keep
