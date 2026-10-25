@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 This file is generated from [Conventional Commits](https://www.conventionalcommits.org).
+## 1.5.7 — 2026-10-25
+
+### Documentation
+- Update for v1.5.6
+
 ## 1.5.6 — 2026-10-04
 
 ### Documentation
@@ -126,97 +131,15 @@ This file is generated from [Conventional Commits](https://www.conventionalcommi
 
 ### Features
 - Change kiosk auto start and introduce kiosk helpers **[breaking]**
-
-### Other
-- Remove github link from navigation
-- Update github pages content to current state
-
-## 0.5.6 — 2026-06-18
-
-### Bug Fixes
-- Handle restart more robust
-- Drop ProtectHome from updater unit so it can write home staging
-
-## 0.5.4 — 2026-06-18
-
-### Bug Fixes
-- Prevent updater download timeout on large packages
-
-## 0.5.2 — 2026-06-18
-
-### Bug Fixes
-- Solve repository name and permission issue with updater download
-
-## 0.5.0 — 2026-06-18
-
-### Features
 - One-click updater
-
-### Bug Fixes
-- Solve JcaPGPKeyPair' is deprecated
-
-## 0.4.2 — 2026-06-18
-
-### Bug Fixes
-- Improve version check logic
-
-## 0.4.1 — 2026-06-14
-
-### Bug Fixes
-- Use non-reserved var for arch pkgver in release workflow
-
-## 0.4.0 — 2026-06-14
-
-### Features
 - Create changelog via conventional commits
 - Improve config-server card design
 - Improve responsiveness for config-server ui
 - Improve accessibility in config-server
-
-## 0.3.6 — 2026-06-14
-
-### Bug Fixes
-- Correct repository url after renaming
-- Adjust news text to be in 2 lines and centered
-
-## 0.3.4 — 2026-06-12
-
-### Features
 - Improve text in modules
-
-## 0.3.3 — 2026-06-09
-
-### Bug Fixes
-- Solve startup failure
-
-## 0.3.2 — 2026-06-09
-
-### Bug Fixes
-- Pam unable to dlopen
-- Unit has no user session and cage aborts
-
-## 0.3.1 — 2026-06-09
-
-### Bug Fixes
-- Create missing dir for package build
-
-## 0.3.0 — 2026-06-09
-
-### Features
 - Optimize installation packages
 - Add github pages documentation
-
-### Bug Fixes
-- Add software render
-
-## 0.2.0 — 2026-06-07
-
-### Features
 - Add more platforms and fingerprint security validation
-
-## 0.1.0 — 2026-06-07
-
-### Features
 - Auto detect version
 - Show current version in update notifier
 - Add update notifier module
@@ -226,14 +149,28 @@ This file is generated from [Conventional Commits](https://www.conventionalcommi
 - Responsiveness optimizations
 
 ### Bug Fixes
+- Handle restart more robust
+- Drop ProtectHome from updater unit so it can write home staging
+- Prevent updater download timeout on large packages
+- Solve repository name and permission issue with updater download
+- Solve JcaPGPKeyPair' is deprecated
+- Improve version check logic
+- Use non-reserved var for arch pkgver in release workflow
+- Correct repository url after renaming
+- Adjust news text to be in 2 lines and centered
+- Solve startup failure
+- Pam unable to dlopen
+- Unit has no user session and cage aborts
+- Create missing dir for package build
+- Add software render
 - Adjust path for arch
 - Disable pacman sandbox
 - Optimize and fix arm64 builds
 - Remove warnings and deprecations
 
 ### Other
+- Remove github link from navigation
+- Update github pages content to current state
 - Bulk dependencies update
-
-## 0.0.1 — 2026-06-06
 
 
