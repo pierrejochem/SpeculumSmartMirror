@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 This file is generated from [Conventional Commits](https://www.conventionalcommits.org).
+## 1.5.8 — 2026-11-08
+
+### Documentation
+- Update for v1.5.7
+
 ## 1.5.7 — 2026-10-25
 
 ### Documentation
